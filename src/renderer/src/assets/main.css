@@ -1,0 +1,44 @@
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Misans', sans-serif;
+  overflow: hidden;
+}
+
+.root {
+  /* 使用 flex 来实现 */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: black;
+  color: white;
+}
+
+.code-layout-title-bar {
+  /* display: flex;
+  align-items: center; */
+  /* 避免被收缩 */
+  flex-shrink: 0;
+  /* 高度与 main.js 中 titleBarOverlay.height 一致  */
+  height: 35px;
+  width: 100%;
+  /* 标题栏始终在最顶层（避免后续被 Modal 之类的覆盖） */
+  /* z-index: 9999; */
+  /* padding-left: 4px; */
+  /* font-size: 14px; */
+  -webkit-app-region: drag !important;
+
+}
+
+#app > div.code-layout-root > div.code-layout-title-bar > div:nth-child(2) {
+  -webkit-app-region: drag;
+}
+
+/*
+.content {
+  overflow: auto;
+}
+*/
