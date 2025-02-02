@@ -45,7 +45,7 @@ body,
 
 
 .ea_app {
-  background: var(--td-gray-color-13);
+  background: var(--td-bg-color-page) !important; /* TDesign 背景色 */
   width: 100%;
   height: 100%;
 }
