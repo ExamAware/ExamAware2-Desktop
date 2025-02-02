@@ -3,5 +3,9 @@ import { RouterLink, RouterView } from 'vue-router'
 </script>
 
 <template>
-  <RouterView />
+  <t-config-provider>
+    <div class="ea_app">
+      <RouterView />
+    </div>
+  </t-config-provider>
 </template>

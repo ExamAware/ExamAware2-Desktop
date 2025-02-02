@@ -1,3 +1,12 @@
 <template>
-  <p>这是主窗口</p>
+  <div class="mainpage">
+
+  </div>
 </template>
+
+<script setup>
+import { FileIcon } from 'tdesign-icons-vue-next'
+</script>
+
+<style scoped>
+</style>
