@@ -1,8 +1,11 @@
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { fileApi } from '../main/fileUtils'
 
 // Custom APIs for renderer
-const api = {}
+const api = {
+  fileApi
+}
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
