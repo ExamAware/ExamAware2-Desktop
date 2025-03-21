@@ -44,8 +44,15 @@ body,
 */
 
 
-.ea_app {
+.ea_app,
+.mainpage {
   background: var(--td-bg-color-page) !important; /* TDesign 背景色 */
   width: 100%;
   height: 100%;
+}
+
+h1,
+h2,
+p {
+  user-select: none;
 }
