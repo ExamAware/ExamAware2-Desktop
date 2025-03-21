@@ -38,7 +38,6 @@ const windowTitle = ref('ExamAware Editor')
 const eaProfile = reactive<ExamConfig>({
   examName: '未命名考试',
   message: '考试信息',
-  room: '114考场',
   examInfos: [],
 })
 const currentExamIndex = ref<number | null>(null)
@@ -59,7 +58,6 @@ function handleConfigFileUpload(file: File) {
       Object.assign(eaProfile, {
         examName: parsed.examName,
         message: parsed.message,
-        room: parsed.room,
         examInfos: parsed.examInfos,
       })
       saveProfileToLocalStorage()
@@ -156,7 +154,6 @@ const menuData: MenuOptions = {
           onClick: () => {
             eaProfile.examName = '未命名考试'
             eaProfile.message = '考试信息'
-            eaProfile.room = '114考场'
             currentExamIndex.value = null
             eaProfile.examInfos = []
             saveProfileToLocalStorage()
@@ -224,7 +221,6 @@ const menuData: MenuOptions = {
 function updateProfile(newProfile: ExamConfig) {
   eaProfile.examName = newProfile.examName
   eaProfile.message = newProfile.message
-  eaProfile.room = newProfile.room
   eaProfile.examInfos = newProfile.examInfos
   saveProfileToLocalStorage()
 }

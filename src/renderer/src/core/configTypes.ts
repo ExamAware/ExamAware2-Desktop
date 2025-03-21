@@ -20,11 +20,6 @@ export interface ExamConfig {
   message: string
 
   /**
-   * The room where the exam will take place.
-   */
-  room: string
-
-  /**
    * An array of information related to the exam.
    */
   examInfos: ExamInfo[]
