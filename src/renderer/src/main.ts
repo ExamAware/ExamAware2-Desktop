@@ -23,6 +23,19 @@ app.use(router)
 app.use(CodeLayout)
 // app.use(TDesign)
 
+// const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+
+// function updateTheme(event: MediaQueryListEvent) {
+//   console.log('updateTheme', event.matches)
+//   document.documentElement.setAttribute('theme-mode', event.matches ? 'dark' : 'light')
+// }
+
+// mediaQuery.addEventListener('change', updateTheme)
+
+// // Set the initial theme
+// document.documentElement.setAttribute('theme-mode', mediaQuery.matches ? 'dark' : 'light')
+
+
 document.documentElement.setAttribute('theme-mode', 'dark')
 
 app.mount('#app')
