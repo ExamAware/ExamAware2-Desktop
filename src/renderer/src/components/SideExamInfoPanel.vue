@@ -7,7 +7,6 @@
       <t-form-item label="考试信息" name="message">
         <t-input v-model="localProfile.message"></t-input>
       </t-form-item>
-
     </t-form>
   </div>
 </template>

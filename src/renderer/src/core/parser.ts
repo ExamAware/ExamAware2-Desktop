@@ -50,3 +50,16 @@ export function getSortedExamInfos(config: ExamConfig) {
     .slice()
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime())
 }
+
+/**
+ * 返回包含排序后考试信息的完整配置对象。
+ *
+ * @param config - 原始考试配置信息对象。
+ * @returns 包含排序后考试信息的新配置对象，考试信息按开始时间升序排列。
+ */
+export function getSortedExamConfig(config: ExamConfig): ExamConfig {
+  return {
+    ...config,
+    examInfos: getSortedExamInfos(config)
+  }
+}

@@ -10,7 +10,7 @@ import SideExamsPanel from '@renderer/components/SideExamsPanel.vue'
 import type { Component } from 'vue'
 import type { ExamConfig } from '@renderer/core/configTypes'
 import type { MenuOptions } from '@imengyu/vue3-context-menu'
-import { parseExamConfig, getSortedExamInfos } from '@renderer/core/parser'
+import { parseExamConfig, getSortedExamInfos, getSortedExamConfig } from '@renderer/core/parser'
 import AboutDialog from '@renderer/components/AboutDialog.vue'
 import SideExamInfoPanel from '@renderer/components/SideExamInfoPanel.vue'
 
@@ -178,7 +178,7 @@ const menuData: MenuOptions = {
           label: '另存为...',
           divided: true,
           onClick: () => {
-            const blob = new Blob([JSON.stringify(getSortedExamInfos(eaProfile))], {
+            const blob = new Blob([JSON.stringify(getSortedExamConfig(eaProfile))], {
               type: 'application/json',
             })
             const url = URL.createObjectURL(blob)
