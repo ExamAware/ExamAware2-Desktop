@@ -1,4 +1,3 @@
-import { ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 
 interface Task {
@@ -7,40 +6,80 @@ interface Task {
   taskFunction: () => void;
 }
 
-const taskQueue = ref<Task[]>([]);
-const intervalId = ref<number | null>(null);
+export class TaskQueue {
+  private taskQueue: Task[] = [];
+  private currentTimeoutId: number | null = null;
+  private getTimeFunction: () => number;
 
-const addTask = (executeTime: number, taskFunction: () => void) => {
-  const task: Task = {
-    id: uuidv4(),
-    executeTime,
-    taskFunction,
-  };
-  taskQueue.value.push(task);
-  taskQueue.value.sort((a, b) => a.executeTime - b.executeTime);
-};
+  constructor(getTimeFunction?: () => number) {
+    // 允许注入自定义的时间获取函数，如果没有提供则使用标准的 Date.now()
+    this.getTimeFunction = getTimeFunction || (() => Date.now());
+  }
 
-const checkTasks = () => {
-  const now = new Date().getTime();
-  while (taskQueue.value.length > 0 && taskQueue.value[0].executeTime <= now) {
-    const task = taskQueue.value.shift();
+  // 更新时间获取函数
+  updateTimeFunction(getTimeFunction: () => number) {
+    this.getTimeFunction = getTimeFunction;
+    // 重新调度任务以适应新的时间函数
+    this.scheduleNextTask();
+  }
+
+  addTask(executeTime: number, taskFunction: () => void) {
+    const task: Task = {
+      id: uuidv4(),
+      executeTime,
+      taskFunction,
+    };
+    this.taskQueue.push(task);
+    this.taskQueue.sort((a, b) => a.executeTime - b.executeTime);
+
+    // 每次添加任务后，重新设置定时器
+    this.scheduleNextTask();
+  }
+
+  private scheduleNextTask() {
+    // 如果当前有定时器，清除它
+    if (this.currentTimeoutId !== null) {
+      clearTimeout(this.currentTimeoutId);
+      this.currentTimeoutId = null;
+    }
+
+    // 如果队列为空，则不需要设置定时器
+    if (this.taskQueue.length === 0) {
+      return;
+    }
+
+    const now = this.getTimeFunction();
+    const nextTask = this.taskQueue[0];
+    const delay = Math.max(nextTask.executeTime - now, 0);
+
+    // 设置定时器，在队首任务的执行时间触发
+    this.currentTimeoutId = window.setTimeout(() => {
+      this.executeNextTask();
+    }, delay);
+  }
+
+  private executeNextTask() {
+    const task = this.taskQueue.shift();
     if (task) {
       task.taskFunction();
     }
-  }
-};
 
-const startTaskQueue = () => {
-  if (!intervalId.value) {
-    intervalId.value = window.setInterval(checkTasks, 200);
+    // 执行完当前任务后，调度下一个任务
+    this.scheduleNextTask();
   }
-};
 
-const stopTaskQueue = () => {
-  if (intervalId.value) {
-    clearInterval(intervalId.value);
-    intervalId.value = null;
+  stop() {
+    if (this.currentTimeoutId !== null) {
+      clearTimeout(this.currentTimeoutId);
+      this.currentTimeoutId = null;
+    }
+    this.taskQueue = [];
   }
-};
-
-export { addTask, startTaskQueue, stopTaskQueue };
+  clear() {
+    this.taskQueue = [];
+    if (this.currentTimeoutId !== null) {
+      clearTimeout(this.currentTimeoutId);
+      this.currentTimeoutId = null;
+    }
+  }
+}
