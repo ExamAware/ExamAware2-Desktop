@@ -4,6 +4,7 @@ import HomeView from '@renderer/views/HomeView.vue'
 import MainpageView from '@renderer/views/home/MainpageView.vue'
 import PluginView from '@renderer/views/home/PluginView.vue'
 import PlayerHomeView from '@renderer/views/home/PlayerHomeView.vue'
+import ntpSettingsPage from '@renderer/views/home/ntpSettingsPage.vue'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -27,6 +28,11 @@ const router = createRouter({
           path: 'pluginpage',
           name: 'pluginpage',
           component: PluginView,
+        },
+        {
+          path: 'ntpsettings',
+          name: 'ntpsettings',
+          component: ntpSettingsPage,
         }
       ],
     },
