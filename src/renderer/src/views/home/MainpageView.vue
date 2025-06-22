@@ -25,7 +25,7 @@
             <t-button class="main-button">
               <ServerIcon size="50px" />
             </t-button>
-            <p class="button-description">从 ECS 放映</p>
+            <p class="button-description">集控</p>
           </div>
         </div>
       </div>
@@ -38,6 +38,13 @@
       <!-- 右侧二维码扫描 -->
 
       <p>Coming S∞n.</p>
+
+      <t-alert :close="true" theme="error">
+        ExamAware2 是开源免费的软件，官方没有提供任何形式的付费支持服务，
+        源代码仓库地址在https://github.com/ExamAware/。
+        如果您通过有偿协助等付费方式取得本应用，在遇到问题时请在与卖家约定的服务框架下，优先向卖家求助。
+        如果卖家没有提供您预期的服务，请退款或通过其它形式积极维护您的合法权益。
+      </t-alert>
 
       <div class="qrcode-container"></div>
       <t-drawer v-model:visible="visible" header="选择摄像头" :close-btn="true">
