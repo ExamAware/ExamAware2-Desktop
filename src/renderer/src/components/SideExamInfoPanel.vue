@@ -2,10 +2,18 @@
   <div class="exam_info_editor">
     <t-form labelAlign="top">
       <t-form-item label="考试名称" name="examName">
-        <t-input v-model="localProfile.examName"></t-input>
+        <t-input
+          v-model="localProfile.examName"
+          @blur="handleUpdate"
+        />
       </t-form-item>
       <t-form-item label="考试信息" name="message">
-        <t-input v-model="localProfile.message"></t-input>
+        <t-textarea
+          v-model="localProfile.message"
+          :autosize="{ minRows: 3, maxRows: 6 }"
+          placeholder="请输入考试相关信息..."
+          @blur="handleUpdate"
+        />
       </t-form-item>
     </t-form>
   </div>
@@ -31,14 +39,10 @@ watch(
   { deep: true },
 )
 
-watch(
-  localProfile,
-  (newProfile) => {
-    console.log('更新考试信息', newProfile)
-    emit('update:profile', newProfile)
-  },
-  { deep: true },
-)
+// 处理更新
+const handleUpdate = () => {
+  emit('update:profile', localProfile.value)
+}
 </script>
 
 <style scoped>

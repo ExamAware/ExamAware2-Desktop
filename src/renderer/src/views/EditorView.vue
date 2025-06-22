@@ -1,25 +1,18 @@
 <script setup lang="ts">
-import {
-  type CodeLayoutConfig,
-  type CodeLayoutInstance,
-  defaultCodeLayoutConfig,
-} from 'vue-code-layout'
-import { ref, reactive, h, onMounted, nextTick } from 'vue'
-import { FileIcon, SearchIcon, InfoCircleIcon, AddIcon } from 'tdesign-icons-vue-next'
-import SideExamsPanel from '@renderer/components/SideExamsPanel.vue'
-import type { Component } from 'vue'
-import type { ExamConfig } from '@renderer/core/configTypes'
+import { type CodeLayoutConfig, defaultCodeLayoutConfig } from 'vue-code-layout'
 import type { MenuOptions } from '@imengyu/vue3-context-menu'
-import { parseExamConfig, getSortedExamInfos, getSortedExamConfig } from '@renderer/core/parser'
+import { reactive, onMounted, ref, computed } from 'vue'
 import AboutDialog from '@renderer/components/AboutDialog.vue'
-import SideExamInfoPanel from '@renderer/components/SideExamInfoPanel.vue'
+import ExamForm from '@renderer/components/ExamForm.vue'
+import { useExamEditor } from '@renderer/composables/useExamEditor'
+import { useLayoutManager } from '@renderer/composables/useLayoutManager'
+import { useExamValidation } from '@renderer/composables/useExamValidation'
 
 // 配置 CodeLayout 的默认设置
 const config = reactive<CodeLayoutConfig>({
   ...defaultCodeLayoutConfig,
   primarySideBarSwitchWithActivityBar: true,
   primarySideBarPosition: 'left',
-  bottomAlignment: 'center',
   titleBar: true,
   titleBarShowCustomizeLayout: true,
   activityBar: true,
@@ -29,232 +22,233 @@ const config = reactive<CodeLayoutConfig>({
   statusBar: true,
   menuBar: true,
   bottomPanelMaximize: false,
+  primarySideBarWidth: 40,
 })
 
-// 定义 ref 和 reactive 变量
-const codeLayout = ref<CodeLayoutInstance>()
-const showAboutDialog = ref(false)
-const windowTitle = ref('ExamAware Editor')
-const eaProfile = reactive<ExamConfig>({
-  examName: '未命名考试',
-  message: '考试信息',
-  examInfos: [],
+// 使用组合式函数管理状态
+const {
+  examConfig,
+  currentExamIndex,
+  windowTitle,
+  showAboutDialog,
+  currentExam,
+  hasExams,
+  addExam,
+  deleteExam,
+  updateExam,
+  switchToExam,
+  updateConfig,
+  newProject,
+  saveProject,
+  saveProjectAs,
+  exportProject,
+  importProject,
+  openProject,
+  closeProject,
+  undoAction,
+  redoAction,
+  cutAction,
+  copyAction,
+  pasteAction,
+  findAction,
+  replaceAction,
+  openAboutDialog,
+  closeAboutDialog,
+  openGithub,
+} = useExamEditor()
+
+// 使用布局管理器
+const { codeLayout, setupLayout, getPanelComponent } = useLayoutManager()
+
+// 使用考试验证
+const { isValid, hasErrors, hasWarnings, validationErrors, validationWarnings } = useExamValidation(examConfig)
+
+// 格式化验证错误供底部面板使用
+const formattedValidationErrors = computed(() => {
+  const errors = validationErrors.value.map(error => ({
+    message: error,
+    type: 'error' as const
+  }))
+
+  const warnings = validationWarnings.value.map(warning => ({
+    message: warning,
+    type: 'warning' as const
+  }))
+
+  return [...errors, ...warnings]
 })
-const currentExamIndex = ref<number | null>(null)
 
-// 定义面板组件
-const panelComponents: Record<string, Component> = {
-  'explorer.examlist': SideExamsPanel,
-  'explorer.examinfo': SideExamInfoPanel,
-}
-
-// 处理配置文件上传
-function handleConfigFileUpload(file: File) {
-  const reader = new FileReader()
-  reader.onload = () => {
-    const result = reader.result?.toString() || ''
-    const parsed = parseExamConfig(result)
-    if (parsed) {
-      Object.assign(eaProfile, {
-        examName: parsed.examName,
-        message: parsed.message,
-        examInfos: parsed.examInfos,
-      })
-      saveProfileToLocalStorage()
-    }
-  }
-  reader.readAsText(file)
-}
-
-// 加载布局
-function loadLayout() {
-  if (codeLayout.value) {
-    const groupExplorer = codeLayout.value.addGroup(
-      {
-        title: 'Explorer',
-        tooltip: 'Explorer',
-        name: 'explorer',
-        badge: '2',
-        iconLarge: () => h(FileIcon, { size: '16pt' }),
-      },
-      'primarySideBar',
-    )
-
-    groupExplorer.addPanel({
-      title: '考试列表',
-      tooltip: 'vue-code-layout',
-      name: 'explorer.examlist',
-      noHide: true,
-      startOpen: true,
-      iconLarge: () => h(FileIcon, { size: '16pt' }),
-      iconSmall: () => h(FileIcon),
-      actions: [
-        {
-          name: 'add-exam',
-          icon: () => h(AddIcon),
-          onClick() {
-            const now = new Date()
-            const lastExam = eaProfile.examInfos[eaProfile.examInfos.length - 1]
-            const start = lastExam ? new Date(new Date(lastExam.end).getTime() + 10 * 60000) : now
-            const end = new Date(start.getTime() + 60 * 60000)
-            eaProfile.examInfos.push({
-              name: '未命名考试' + (eaProfile.examInfos.length + 1),
-              start: start.toISOString(),
-              end: end.toISOString(),
-              alertTime: 15,
-            })
-            currentExamIndex.value = eaProfile.examInfos.length - 1
-            saveProfileToLocalStorage()
-          },
-        },
-      ],
-    })
-
-    groupExplorer.addPanel({
-      title: '考试信息',
-      tooltip: 'Exam info',
-      name: 'explorer.examinfo',
-      noHide: true,
-      startOpen: true,
-      iconSmall: () => h(InfoCircleIcon),
-      iconLarge: () => h(InfoCircleIcon, { size: '16pt' }),
-    })
-  }
-}
-
-// 获取面板组件
-function getPanelComponent(name: string) {
-  return panelComponents[name] || 'div'
-}
+// 菜单数据 - 使用响应式变量
+const menuData = ref<MenuOptions | null>(null)
 
 // 处理切换考试信息
 function handleSwitchExamInfo(payload: { examId: number }) {
-  currentExamIndex.value = payload.examId
-  const examInfo = eaProfile.examInfos[payload.examId]
-  if (examInfo) {
-    console.log('切换到考试信息:', examInfo)
+  switchToExam(payload.examId)
+}
+
+// 更新配置文件 (兼容旧的接口)
+function updateProfile(newConfig: any) {
+  console.log('EditorView: updateProfile called with:', newConfig)
+  updateConfig(newConfig)
+  console.log('EditorView: after updateConfig, examConfig:', examConfig)
+}
+
+// 处理考试保存
+function handleExamSave(examInfo: any) {
+  if (currentExamIndex.value !== null) {
+    updateExam(currentExamIndex.value, examInfo)
   }
 }
 
-// 关闭关于对话框
-function closeAboutDialog() {
-  showAboutDialog.value = false
-}
-
-// 定义菜单数据
-const menuData: MenuOptions = {
-  x: 0,
-  y: 0,
-  items: [
-    {
-      label: '文件',
-      children: [
-        {
-          label: '新建',
-          onClick: () => {
-            eaProfile.examName = '未命名考试'
-            eaProfile.message = '考试信息'
-            currentExamIndex.value = null
-            eaProfile.examInfos = []
-            saveProfileToLocalStorage()
-          },
-        },
-        {
-          label: '打开...',
-          onClick: () => {
-            const input = document.createElement('input')
-            input.type = 'file'
-            input.accept = '.json'
-            input.onchange = (e) => {
-              const files = (e.target as HTMLInputElement).files
-              if (files && files.length > 0) {
-                handleConfigFileUpload(files[0])
-              }
-            }
-            input.click()
-          },
-        },
-        {
-          label: '另存为...',
-          divided: true,
-          onClick: () => {
-            const blob = new Blob([JSON.stringify(getSortedExamConfig(eaProfile))], {
-              type: 'application/json',
-            })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = 'exam.json'
-            a.click()
-            URL.revokeObjectURL(url)
-          },
-        },
-      ],
-    },
-    {
-      label: '放映',
-      children: [{ label: '开始全屏放映' }],
-    },
-    {
-      label: '帮助',
-      children: [
-        {
-          label: 'Github',
-          onClick: () => {
-            window.open('https://github.com/ExamAware/')
-          },
-        },
-        {
-          label: '关于 DSZ知试',
-          onClick: () => {
-            showAboutDialog.value = true
-          },
-        },
-      ],
-    },
-  ],
-  zIndex: 3,
-  minWidth: 230,
-}
-
-// 更新配置文件
-function updateProfile(newProfile: ExamConfig) {
-  eaProfile.examName = newProfile.examName
-  eaProfile.message = newProfile.message
-  eaProfile.examInfos = newProfile.examInfos
-  saveProfileToLocalStorage()
-}
-
-// 保存配置文件到本地存储
-function saveProfileToLocalStorage() {
-  localStorage.setItem('eaProfile', JSON.stringify(eaProfile))
-}
-
-// 从本地存储加载配置文件
-function loadProfileFromLocalStorage() {
-  const storedProfile = localStorage.getItem('eaProfile')
-  if (storedProfile) {
-    const parsedProfile = JSON.parse(storedProfile) as ExamConfig
-    Object.assign(eaProfile, parsedProfile)
+// 下一个考试
+const nextExam = () => {
+  if (currentExamIndex.value !== null && currentExamIndex.value < examConfig.examInfos.length - 1) {
+    switchToExam(currentExamIndex.value + 1)
+  } else if (examConfig.examInfos.length > 0) {
+    switchToExam(0)
   }
 }
 
-// 组件挂载时加载布局和配置文件
-onMounted(() => {
-  nextTick(() => {
-    loadLayout()
-    loadProfileFromLocalStorage()
+// 上一个考试
+const prevExam = () => {
+  if (currentExamIndex.value !== null && currentExamIndex.value > 0) {
+    switchToExam(currentExamIndex.value - 1)
+  } else if (examConfig.examInfos.length > 0) {
+    switchToExam(examConfig.examInfos.length - 1)
+  }
+}
+
+// 删除当前考试
+const deleteCurrentExam = () => {
+  if (currentExamIndex.value !== null) {
+    deleteExam(currentExamIndex.value)
+  }
+}
+
+// 获取考试状态
+const getExamStatus = (exam: any) => {
+  if (!exam) return ''
+
+  const now = new Date()
+  const start = new Date(exam.start)
+  const end = new Date(exam.end)
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return '待设置'
+  }
+
+  if (now < start) {
+    return '未开始'
+  } else if (now >= start && now <= end) {
+    return '进行中'
+  } else {
+    return '已结束'
+  }
+}
+
+// 获取状态主题
+const getExamStatusTheme = (exam: any) => {
+  const status = getExamStatus(exam)
+  switch (status) {
+    case '未开始':
+      return 'warning'
+    case '进行中':
+      return 'success'
+    case '已结束':
+      return 'default'
+    default:
+      return 'default'
+  }
+}
+
+// 组件挂载时初始化
+onMounted(async () => {
+  // 设置布局和菜单
+  menuData.value = await setupLayout(addExam, {
+    onNew: newProject,
+    onOpen: openProject,
+    onSave: saveProject,
+    onSaveAs: saveProjectAs,
+    onImport: importProject,
+    onExport: exportProject,
+    onClose: closeProject,
+    onUndo: undoAction,
+    onRedo: redoAction,
+    onCut: cutAction,
+    onCopy: copyAction,
+    onPaste: pasteAction,
+    onFind: findAction,
+    onReplace: replaceAction,
+    onAbout: openAboutDialog,
+    onGithub: openGithub,
+    onPresentation: () => {
+      console.log('开始全屏放映')
+    },
+    onAddExam: addExam,
+    onDeleteExam: deleteCurrentExam,
+    onNextExam: nextExam,
+    onPrevExam: prevExam,
   })
+
+  // 检查 CodeLayout 实例
+  setTimeout(() => {
+    console.log('CodeLayout ref:', codeLayout.value)
+    if (codeLayout.value) {
+      console.log('CodeLayout instance found')
+    } else {
+      console.warn('CodeLayout ref not found!')
+    }
+  }, 100)
 })
 </script>
 
 <template>
-  <CodeLayout ref="codeLayout" :layout-config="config" :mainMenuConfig="menuData">
-    <template #statusBar></template>
+  <CodeLayout
+    ref="codeLayout"
+    :layout-config="config"
+    :mainMenuConfig="menuData"
+  >
+    <template #statusBar>
+      <div class="status-bar">
+        <div class="status-left">
+          <span v-if="hasExams">
+            共 {{ examConfig.examInfos.length }} 个考试
+          </span>
+          <span v-else>
+            暂无考试
+          </span>
+        </div>
+        <div class="status-center">
+          <span v-if="currentExamIndex !== null && currentExam">
+            正在编辑: {{ currentExam.name || `考试 ${currentExamIndex + 1}` }}
+            <t-tag
+              v-if="getExamStatus(currentExam)"
+              size="small"
+              :theme="getExamStatusTheme(currentExam)"
+              style="margin-left: 8px;"
+            >
+              {{ getExamStatus(currentExam) }}
+            </t-tag>
+          </span>
+        </div>
+        <div class="status-right">
+          <span v-if="hasErrors" class="status-error">
+            <t-icon name="error-circle" /> {{ validationErrors.length }} 个错误
+          </span>
+          <span v-else-if="hasWarnings" class="status-warning">
+            <t-icon name="warning-circle" /> 有警告
+          </span>
+          <span v-else-if="isValid" class="status-success">
+            <t-icon name="check-circle" /> 就绪
+          </span>
+        </div>
+      </div>
+    </template>
     <template #panelRender="{ panel }">
       <component
         :is="getPanelComponent(panel.name)"
-        :profile="eaProfile"
+        :profile="examConfig"
+        :validation-errors="panel.name === 'bottom.validation' ? formattedValidationErrors : undefined"
         @switch-exam-info="handleSwitchExamInfo"
         @update:profile="updateProfile"
       />
@@ -265,45 +259,144 @@ onMounted(() => {
     <template #titleBarCenter>
       <span>{{ windowTitle }}</span>
     </template>
+    <!-- <template #titleBarRight>
+      <div class="window-controls">
+        <t-button
+          variant="text"
+          size="small"
+          class="window-control-btn minimize-btn"
+          @click="minimizeWindow"
+          title="最小化"
+        >
+          <t-icon name="minus" />
+        </t-button>
+        <t-button
+          variant="text"
+          size="small"
+          class="window-control-btn close-btn"
+          @click="closeWindow"
+          title="关闭"
+        >
+          <t-icon name="close" />
+        </t-button>
+      </div>
+    </template> -->
     <template #centerArea>
       <div style="padding: 20px">
-        <p v-if="currentExamIndex === null">
-          请从左侧的考试列表中选择一个考试进行编辑。如果列表中没有考试，请先添加一个考试。
-        </p>
+        <div v-if="currentExamIndex === null" class="empty-state">
+          <t-empty description="请从左侧的考试列表中选择一个考试进行编辑">
+            <template #image>
+              <t-icon name="calendar" size="64px" />
+            </template>
+            <t-button theme="primary" @click="addExam">
+              添加第一个考试
+            </t-button>
+          </t-empty>
+        </div>
         <div v-else>
-          <t-form labelAlign="top">
-            <t-form-item label="考试名称" name="examName">
-              <t-input v-model="eaProfile.examInfos[currentExamIndex].name"></t-input>
-            </t-form-item>
-            <t-form-item label="开始时间" name="start">
-              <t-date-picker
-                enable-time-picker
-                allow-input
-                clearable
-                v-model="eaProfile.examInfos[currentExamIndex].start"
-              />
-            </t-form-item>
-            <t-form-item label="结束时间" name="end">
-              <t-date-picker
-                enable-time-picker
-                allow-input
-                clearable
-                v-model="eaProfile.examInfos[currentExamIndex].end"
-              />
-            </t-form-item>
-            <t-form-item label="考试结束提醒时间" name="alertTime">
-              <t-input-number
-                v-model="eaProfile.examInfos[currentExamIndex].alertTime"
-                suffix="分钟"
-                style="width: 200px"
-                :min="5"
-              />
-            </t-form-item>
-          </t-form>
+          <ExamForm
+            v-if="currentExam"
+            v-model="currentExam"
+            :auto-save="true"
+            @save="handleExamSave"
+          />
         </div>
       </div>
     </template>
   </CodeLayout>
   <AboutDialog :visible="showAboutDialog" @update:closedialog="closeAboutDialog" />
 </template>
+
+<style scoped>
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  height: 100%;
+  font-size: 12px;
+  background-color: var(--td-bg-color-container);
+  border-top: 1px solid var(--td-border-level-1-color);
+}
+
+.status-left,
+.status-center,
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-center {
+  flex: 1;
+  justify-content: center;
+}
+
+.status-error {
+  color: var(--td-color-error);
+}
+
+.status-warning {
+  color: var(--td-color-warning);
+}
+
+.status-success {
+  color: var(--td-color-success);
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+}
+
+/* 窗口控制按钮样式 */
+.window-controls {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 100%;
+}
+
+.window-control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 32px;
+  border-radius: 0;
+  transition: background-color 0.2s ease;
+  margin: 0;
+  padding: 0;
+}
+
+.window-control-btn:hover {
+  background-color: var(--td-bg-color-container-hover);
+}
+
+.minimize-btn:hover {
+  background-color: #e6e6e6;
+}
+
+.close-btn:hover {
+  background-color: #e81123;
+  color: white;
+}
+
+.close-btn:hover .t-icon {
+  color: white;
+}
+
+/* macOS 样式 */
+@media (prefers-color-scheme: dark) {
+  .minimize-btn:hover {
+    background-color: #404040;
+  }
+
+  .close-btn:hover {
+    background-color: #e81123;
+  }
+}
+</style>
 
