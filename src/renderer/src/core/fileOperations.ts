@@ -2,6 +2,9 @@
  * 文件操作管理器
  * 负责处理文件的导入导出操作
  */
+
+import { getSyncedTime } from '@renderer/utils/timeUtils'
+
 export class FileOperationManager {
   /**
    * 导入JSON文件
@@ -55,7 +58,7 @@ export class FileOperationManager {
   static exportJsonFileAs(content: string, defaultName: string = 'exam.json'): void {
     // 在浏览器环境中，我们仍然使用标准的下载方式
     // 因为 File System Access API 在某些浏览器中支持有限
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0]
+    const timestamp = new Date(getSyncedTime()).toISOString().replace(/[:.]/g, '-').split('T')[0]
     const filename = defaultName.replace('.json', `_${timestamp}.json`)
     this.exportJsonFile(content, filename)
   }

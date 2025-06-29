@@ -1,6 +1,7 @@
 import type { ExamConfig, ExamInfo } from './configTypes'
 import { parseExamConfig, getSortedExamConfig, validateExamConfig } from './parser'
 import { formatLocalDateTime } from '@renderer/utils/dateFormat'
+import { getSyncedTime } from '@renderer/utils/timeUtils'
 
 /**
  * 考试配置管理器
@@ -46,7 +47,7 @@ export class ExamConfigManager {
    * 添加考试信息
    */
   addExamInfo(examInfo?: Partial<ExamInfo>): number {
-    const now = new Date()
+    const now = new Date(getSyncedTime())
     const lastExam = this.config.examInfos[this.config.examInfos.length - 1]
     const start = lastExam
       ? new Date(new Date(lastExam.end).getTime() + 10 * 60000)

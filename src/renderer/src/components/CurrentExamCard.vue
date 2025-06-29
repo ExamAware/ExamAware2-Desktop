@@ -31,9 +31,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ExamInfo } from '@renderer/core/configTypes'
-import { useTimeSync } from '@renderer/utils/timeUtils'
-
-const { getSyncedTime } = useTimeSync()
+import { getSyncedTime } from '@renderer/utils/timeUtils'
 
 const props = defineProps<{
   examInfo: ExamInfo | undefined

@@ -7,6 +7,7 @@ import ExamForm from '@renderer/components/ExamForm.vue'
 import { useExamEditor } from '@renderer/composables/useExamEditor'
 import { useLayoutManager } from '@renderer/composables/useLayoutManager'
 import { useExamValidation } from '@renderer/composables/useExamValidation'
+import { getSyncedTime } from '@renderer/utils/timeUtils'
 
 // 配置 CodeLayout 的默认设置
 const config = reactive<CodeLayoutConfig>({
@@ -129,7 +130,7 @@ const deleteCurrentExam = () => {
 const getExamStatus = (exam: any) => {
   if (!exam) return ''
 
-  const now = new Date()
+  const now = new Date(getSyncedTime())
   const start = new Date(exam.start)
   const end = new Date(exam.end)
 

@@ -3,6 +3,7 @@ import type { ExamConfig } from '@renderer/core/configTypes'
 import { ExamConfigManager } from '@renderer/core/configManager'
 import { FileOperationManager } from '@renderer/core/fileOperations'
 import { MessageService } from '@renderer/core/messageService'
+import { getSyncedTime } from '@renderer/utils/timeUtils'
 
 /**
  * 考试编辑器状态管理
@@ -142,7 +143,7 @@ export function useExamEditor() {
 
           // 获取项目名称并添加到最近文件
           const projectName = examConfig.examInfos[0]?.name || '未命名项目'
-          const timestamp = new Date().toLocaleString()
+          const timestamp = new Date(getSyncedTime()).toLocaleString()
           const fileName = `${projectName} (${timestamp})`
           FileOperationManager.addToRecentFiles(fileName)
 
@@ -167,8 +168,6 @@ export function useExamEditor() {
     MessageService.info('项目已关闭')
     console.log('项目已关闭')
   }
-
-  // 编辑操作（暂时用控制台输出表示）
   const undoAction = () => {
     console.log('撤销操作')
     // TODO: 实现撤销功能

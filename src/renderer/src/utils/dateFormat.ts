@@ -2,6 +2,8 @@
  * 时间格式化工具函数
  */
 
+import { getSyncedTime } from './timeUtils'
+
 /**
  * 将 Date 对象格式化为本地时间字符串
  * 格式: YYYY-MM-DD HH:mm:ss
@@ -77,5 +79,5 @@ export function parseDateTime(dateStr: string): Date {
  * 获取当前本地时间字符串
  */
 export function getCurrentLocalDateTime(): string {
-  return formatLocalDateTime(new Date())
+  return formatLocalDateTime(new Date(getSyncedTime()))
 }

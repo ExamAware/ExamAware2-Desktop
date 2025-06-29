@@ -81,6 +81,7 @@ import { ref, h } from 'vue'
 import type { ExamInfo } from '@renderer/core/configTypes'
 import { MoreIcon, TimeIcon, CalendarIcon } from 'tdesign-icons-vue-next'
 import { formatTimeRange } from '@renderer/utils/dateFormat'
+import { getSyncedTime } from '@renderer/utils/timeUtils'
 
 interface Props {
   examList: ExamInfo[]
@@ -121,7 +122,7 @@ const formatExamTime = (exam: ExamInfo) => {
 
 // 获取考试状态
 const getExamStatus = (exam: ExamInfo) => {
-  const now = new Date()
+  const now = new Date(getSyncedTime())
   const start = new Date(exam.start)
   const end = new Date(exam.end)
 

@@ -16,6 +16,7 @@ import { defineProps, defineEmits, computed } from 'vue'
 import type { ExamConfig, ExamInfo } from '@renderer/core/configTypes'
 import ExamList from './ExamList.vue'
 import { formatLocalDateTime } from '@renderer/utils/dateFormat'
+import { getSyncedTime } from '@renderer/utils/timeUtils'
 
 const props = defineProps({
   profile: Object as () => ExamConfig,
@@ -36,7 +37,7 @@ const addExam = () => {
   console.log('SideExamsPanel: addExam called')
   console.log('Current profile examInfos:', currentProfile.value.examInfos)
 
-  const now = new Date()
+  const now = new Date(getSyncedTime())
   const startTime = formatLocalDateTime(now)
   const endTime = formatLocalDateTime(new Date(now.getTime() + 2 * 60 * 60 * 1000))
 
