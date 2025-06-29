@@ -3,6 +3,7 @@ import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { createMainWindow } from './windows/mainWindow'
 import { registerIpcHandlers } from './ipcHandlers'
 import { registerTimeSyncHandlers } from './ipcHandlers/timeServiceHandler'
+import { initializeTimeSync } from './ntpService/timeService'
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('org.examaware')
@@ -13,6 +14,9 @@ app.whenReady().then(() => {
 
   registerIpcHandlers()
   registerTimeSyncHandlers()
+
+  // 初始化时间同步服务
+  initializeTimeSync()
 
   createMainWindow()
 

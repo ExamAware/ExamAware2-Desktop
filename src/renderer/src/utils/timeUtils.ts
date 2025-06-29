@@ -59,7 +59,7 @@ export function useTimeSync() {
   const syncInfo = ref()
   const syncStatus = ref('pending')
   const isLoading = ref(false)
-  const currentTime = ref(Date.now())
+  const currentTime = ref(getSyncedTime())
   let intervalId: NodeJS.Timeout | null = null
 
   // 加载同步信息
