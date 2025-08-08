@@ -7,6 +7,8 @@ import SideExamInfoPanel from '@renderer/components/SideExamInfoPanel.vue'
 import SettingsPanel from '@renderer/components/SettingsPanel.vue'
 import ValidationPanel from '@renderer/components/ValidationPanel.vue'
 
+const { ipcRenderer } = window.electron || {}
+
 /**
  * 布局管理组合式函数
  */
@@ -41,6 +43,7 @@ export function useLayoutManager() {
     onImport?: () => void
     onExport?: () => void
     onClose?: () => void
+    onRestoreSession?: () => void
     onUndo?: () => void
     onRedo?: () => void
     onCut?: () => void
@@ -57,7 +60,40 @@ export function useLayoutManager() {
     onPrevExam?: () => void
   }) => {
     menuManager = new MenuConfigManager(handlers)
-    return menuManager.getMenuConfig()
+    
+    // 设置菜单更新回调
+    let menuUpdateCallback: (() => void) | null = null
+    menuManager.setMenuUpdateCallback(() => {
+      menuUpdateCallback?.()
+    })
+    
+    // 监听插件菜单项添加
+    if (ipcRenderer) {
+      ipcRenderer.on('plugin:add-editor-menu-item', (event, data) => {
+        console.log('Received plugin:add-editor-menu-item', data)
+        const { pluginName, menuItem } = data
+        menuManager?.addPluginMenuItem(pluginName, menuItem)
+      })
+      
+      // 监听插件菜单项移除
+      ipcRenderer.on('plugin:remove-editor-menu-item', (event, data) => {
+        const { pluginName, menuItemId } = data
+        menuManager?.removePluginMenuItem(pluginName, menuItemId)
+      })
+      
+      // 监听插件停用时清理所有菜单项
+      ipcRenderer.on('plugin:remove-all-editor-menu-items', (event, data) => {
+        const { pluginName } = data
+        menuManager?.removeAllPluginMenuItems(pluginName)
+      })
+    }
+    
+    return {
+      menuConfig: menuManager.getMenuConfig(),
+      setMenuUpdateCallback: (callback: () => void) => {
+        menuUpdateCallback = callback
+      }
+    }
   }
 
   const getPanelComponent = (name: string) => {
@@ -79,6 +115,7 @@ export function useLayoutManager() {
       onImport?: () => void
       onExport?: () => void
       onClose?: () => void
+      onRestoreSession?: () => void
       onUndo?: () => void
       onRedo?: () => void
       onCut?: () => void
@@ -97,7 +134,8 @@ export function useLayoutManager() {
   ) => {
     await nextTick()
     initializeLayout(onAddExam)
-    return initializeMenu(menuHandlers)
+    const menuResult = initializeMenu(menuHandlers)
+    return menuResult
   }
 
   return {

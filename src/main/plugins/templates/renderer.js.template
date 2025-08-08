@@ -1,0 +1,83 @@
+/**
+ * {{pluginName}} 渲染进程插件
+ */
+
+class {{pascalCasePluginName}}RendererPlugin {
+  constructor() {
+    this.metadata = {
+      name: '{{pluginName}}',
+      version: '1.0.0'
+    }
+  }
+
+  /**
+   * 插件激活时调用
+   * @param {Object} context - 插件上下文
+   */
+  async activate(context) {
+    console.log('{{pluginName}} renderer plugin activated')
+
+    // 注册Vue组件
+    context.components.register('{{pascalCasePluginName}}Component', {
+      template: `
+        <div class="{{lowerCasePluginName}}-component">
+          <h3>{{pluginName}} 组件</h3>
+          <p>这是一个示例组件</p>
+          <button @click="sayHello">打招呼</button>
+        </div>
+      `,
+      methods: {
+        async sayHello() {
+          try {
+            const message = await context.ipc.invoke('hello')
+            context.ui.showNotification(message, 'success')
+          } catch (error) {
+            context.ui.showNotification('调用失败', 'error')
+          }
+        }
+      }
+    })
+
+    // 添加路由
+    context.router.addRoute({
+      path: '/{{lowerCasePluginName}}',
+      name: '{{pluginName}}',
+      component: () => import('./components/{{pascalCasePluginName}}View.vue')
+    })
+
+    // 添加工具栏按钮
+    context.ui.addToolbarButton({
+      id: '{{pluginName}}-button',
+      label: '{{pluginName}}',
+      icon: 'plugin',
+      click: () => {
+        context.router.push('/{{lowerCasePluginName}}')
+      }
+    })
+
+    // 添加侧边栏面板
+    context.ui.addSidebarPanel({
+      id: '{{pluginName}}-panel',
+      title: '{{pluginName}}',
+      component: '{{pascalCasePluginName}}Component'
+    })
+
+    // 监听插件事件
+    context.events.on('show-plugin-dialog', (pluginName) => {
+      if (pluginName === '{{pluginName}}') {
+        context.ui.showNotification('{{pluginName}} 对话框已显示', 'info')
+      }
+    })
+  }
+
+  /**
+   * 插件停用时调用
+   */
+  async deactivate() {
+    console.log('{{pluginName}} renderer plugin deactivated')
+    // 清理资源
+  }
+}
+
+// 导出插件实例
+export default new {{pascalCasePluginName}}RendererPlugin()

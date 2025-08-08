@@ -1,0 +1,38 @@
+{
+  "name": "example-plugin",
+  "version": "1.0.0",
+  "description": "ExamAware 示例插件，展示插件系统的基本功能",
+  "author": "ExamAware Team",
+  "main": "main.js",
+  "renderer": "renderer.js",
+  "permissions": [
+    "ipc",
+    "window-management",
+    "notification"
+  ],
+  "engines": {
+    "examaware": "^1.0.0",
+    "electron": "^31.0.0",
+    "node": "^20.0.0"
+  },
+  "dependencies": [],
+  "settings": {
+    "welcomeMessage": {
+      "type": "string",
+      "default": "欢迎使用示例插件！",
+      "description": "欢迎消息"
+    },
+    "showNotifications": {
+      "type": "boolean",
+      "default": true,
+      "description": "是否显示通知"
+    },
+    "maxItems": {
+      "type": "number",
+      "default": 10,
+      "min": 1,
+      "max": 100,
+      "description": "最大项目数量"
+    }
+  }
+}

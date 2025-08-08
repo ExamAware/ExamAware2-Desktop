@@ -10,7 +10,7 @@
 import { ref } from 'vue';
 import { Button as TButton } from 'tdesign-vue-next';
 
-const ipcRenderer = window.electron.ipcRenderer;
+const ipcRenderer = window.api.ipc;
 
 const minimizeWindow = () => {
   ipcRenderer.send('minimize-window');

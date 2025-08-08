@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "plugins": {},
+  "settings": {
+    "autoLoadPlugins": true,
+    "allowUnsignedPlugins": false,
+    "pluginTimeout": 30000,
+    "maxPlugins": 50
+  }
+}

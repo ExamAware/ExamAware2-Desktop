@@ -9,6 +9,7 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
+import { rendererPluginManager } from './plugins/RendererPluginManager'
 
 import 'vue-code-layout/lib/vue-code-layout.css'
 import CodeLayout from 'vue-code-layout'
@@ -17,8 +18,9 @@ import CodeLayout from 'vue-code-layout'
 import 'tdesign-vue-next/es/style/index.css'
 
 const app = createApp(App)
+const pinia = createPinia()
 
-app.use(createPinia())
+app.use(pinia)
 app.use(router)
 app.use(CodeLayout)
 // app.use(TDesign)
@@ -37,5 +39,10 @@ app.use(CodeLayout)
 
 
 document.documentElement.setAttribute('theme-mode', 'dark')
+
+// 初始化插件管理器
+rendererPluginManager.initialize(app, router, pinia).then(() => {
+  console.log('Renderer plugin manager initialized')
+})
 
 app.mount('#app')

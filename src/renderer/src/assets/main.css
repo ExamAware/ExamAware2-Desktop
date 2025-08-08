@@ -29,12 +29,32 @@ body,
   /* z-index: 9999; */
   /* padding-left: 4px; */
   /* font-size: 14px; */
-  -webkit-app-region: drag !important;
-
+  /* 整个标题栏默认可拖动 */
+  -webkit-app-region: drag;
 }
 
-#app > div.code-layout-root > div.code-layout-title-bar > div:nth-child(2) {
+/* 左侧和右侧区域设置为不可拖动 */
+.code-layout-title-bar > div:first-child,
+.code-layout-title-bar > div:last-child {
+  -webkit-app-region: no-drag;
+}
+
+/* 确保左侧和右侧区域的所有子元素都不可拖动 */
+.code-layout-title-bar > div:first-child *,
+.code-layout-title-bar > div:last-child * {
+  -webkit-app-region: no-drag;
+}
+
+/* 中心区域保持可拖动（继承父级设置） */
+.code-layout-title-bar > div:nth-child(2) {
   -webkit-app-region: drag;
+}
+
+/* 额外确保菜单栏区域不可拖动 */
+.code-layout-title-bar .code-layout-menu-bar,
+.code-layout-title-bar [class*="menu"],
+.code-layout-title-bar [class*="Menu"] {
+  -webkit-app-region: no-drag;
 }
 
 /*

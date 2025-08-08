@@ -4,10 +4,16 @@ import type { MenuOptions } from '@imengyu/vue3-context-menu'
 import { reactive, onMounted, ref, computed } from 'vue'
 import AboutDialog from '@renderer/components/AboutDialog.vue'
 import ExamForm from '@renderer/components/ExamForm.vue'
+import WindowControls from '@renderer/components/WindowControls.vue'
 import { useExamEditor } from '@renderer/composables/useExamEditor'
 import { useLayoutManager } from '@renderer/composables/useLayoutManager'
 import { useExamValidation } from '@renderer/composables/useExamValidation'
 import { getSyncedTime } from '@renderer/utils/timeUtils'
+
+// 平台检测 - 通过 electronAPI 获取
+const windowAPI = (window as any).electronAPI
+const isMacOS = windowAPI?.platform === 'darwin'
+console.log("platform: " + windowAPI?.platform)
 
 // 配置 CodeLayout 的默认设置
 const config = reactive<CodeLayoutConfig>({
@@ -46,6 +52,7 @@ const {
   importProject,
   openProject,
   closeProject,
+  restoreLastSession,
   undoAction,
   redoAction,
   cutAction,
@@ -164,8 +171,13 @@ const getExamStatusTheme = (exam: any) => {
 
 // 组件挂载时初始化
 onMounted(async () => {
+  // 为非 Linux 平台设置窗口状态监听
+  if (windowAPI?.platform && windowAPI.platform !== 'linux') {
+    windowAPI.setupListeners()
+  }
+
   // 设置布局和菜单
-  menuData.value = await setupLayout(addExam, {
+  const menuResult = await setupLayout(addExam, {
     onNew: newProject,
     onOpen: openProject,
     onSave: saveProject,
@@ -173,6 +185,7 @@ onMounted(async () => {
     onImport: importProject,
     onExport: exportProject,
     onClose: closeProject,
+    onRestoreSession: restoreLastSession,
     onUndo: undoAction,
     onRedo: redoAction,
     onCut: cutAction,
@@ -189,6 +202,16 @@ onMounted(async () => {
     onDeleteExam: deleteCurrentExam,
     onNextExam: nextExam,
     onPrevExam: prevExam,
+  })
+  
+  menuData.value = menuResult.menuConfig
+  
+  // 设置菜单更新回调，当插件菜单项变化时重新获取菜单配置
+  menuResult.setMenuUpdateCallback(() => {
+    const manager = menuManager()
+    if (manager) {
+      menuData.value = manager.getMenuConfig()
+    }
   })
 
   // 检查 CodeLayout 实例
@@ -255,10 +278,24 @@ onMounted(async () => {
       />
     </template>
     <template #titleBarIcon>
-      <img src="@renderer/assets/logo.svg" style="margin: 10px" alt="logo" width="25px" />
+      <!-- macOS 下隐藏logo为交通灯按钮让路，其他平台显示logo -->
+      <img
+         v-if="!isMacOS"
+        src="@renderer/assets/logo.svg"
+        style="margin: 10px"
+        alt="logo"
+        width="20px"
+      />
+      <!-- macOS 下用空白区域撑开左侧空间 -->
+      <div v-else style="width: 80px; height: 35px; -webkit-app-region: no-drag;"></div>
     </template>
     <template #titleBarCenter>
-      <span>{{ windowTitle }}</span>
+      <div class="title-bar-center">
+        {{ windowTitle }}
+      </div>
+    </template>
+    <template #titleBarRight>
+      <WindowControls />
     </template>
     <!-- <template #titleBarRight>
       <div class="window-controls">
@@ -350,6 +387,20 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   height: 400px;
+}
+
+.title-bar-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  -webkit-app-region: drag;
+  user-select: none;
+  font-size: 14px;
+  /* 确保整个区域都可以拖动 */
+  min-width: 0;
+  flex: 1;
 }
 
 /* 窗口控制按钮样式 */

@@ -132,7 +132,7 @@ const handleClickDrawerBtn = () => {
 }
 
 const handleEditor = () => {
-  window.electron.ipcRenderer.send('open-editor-window')
+  window.api.ipc.send('open-editor-window')
 }
 </script>
 

@@ -5,9 +5,11 @@ import MainpageView from '@renderer/views/home/MainpageView.vue'
 import PluginView from '@renderer/views/home/PluginView.vue'
 import PlayerHomeView from '@renderer/views/home/PlayerHomeView.vue'
 import ntpSettingsPage from '@renderer/views/home/ntpSettingsPage.vue'
+import PluginManager from '@renderer/components/PluginManager.vue'
+import PluginDevPanel from '@renderer/components/PluginDevPanel.vue'
 
 const router = createRouter({
-  history: createWebHashHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(),
   routes: [
     {
       path: '/',
@@ -33,6 +35,16 @@ const router = createRouter({
           path: 'ntpsettings',
           name: 'ntpsettings',
           component: ntpSettingsPage,
+        },
+        {
+          path: 'plugin-manager',
+          name: 'plugin-manager',
+          component: PluginManager,
+        },
+        {
+          path: 'plugin-dev',
+          name: 'plugin-dev',
+          component: PluginDevPanel,
         }
       ],
     },

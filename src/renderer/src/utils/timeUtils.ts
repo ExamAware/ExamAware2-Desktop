@@ -1,6 +1,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
-const { ipcRenderer } = window.electron
+// 使用预加载脚本暴露的API
+const ipcRenderer = window.api?.ipc
 
 // 缓存上次同步信息
 let lastSyncInfo = {
@@ -23,6 +24,10 @@ export function getSyncedTime(): number {
 // 获取时间同步状态
 export async function getTimeSyncInfo() {
   try {
+    if (!ipcRenderer) {
+      console.warn('IPC renderer not available')
+      return null
+    }
     const info = await ipcRenderer.invoke('time:get-sync-info')
     lastSyncInfo = info
     return info
@@ -35,6 +40,10 @@ export async function getTimeSyncInfo() {
 // 执行时间同步
 export async function syncTime() {
   try {
+    if (!ipcRenderer) {
+      console.warn('IPC renderer not available')
+      throw new Error('IPC renderer not available')
+    }
     const result = await ipcRenderer.invoke('time:sync-now')
     lastSyncInfo = result
     return result
@@ -47,6 +56,10 @@ export async function syncTime() {
 // 更新时间同步配置
 export async function updateTimeSyncConfig(config) {
   try {
+    if (!ipcRenderer) {
+      console.warn('IPC renderer not available')
+      throw new Error('IPC renderer not available')
+    }
     return await ipcRenderer.invoke('time:update-config', config)
   } catch (error) {
     console.error('更新时间同步配置失败:', error)

@@ -1,6 +1,7 @@
 import { ipcMain, dialog, BrowserWindow } from 'electron'
 import { createEditorWindow } from '../windows/editorWindow'
 import { createPlayerWindow } from '../windows/playerWindow'
+import { fileApi } from '../fileUtils'
 
 export function registerIpcHandlers(): void {
   // IPC test
@@ -41,10 +42,91 @@ export function registerIpcHandlers(): void {
     }
   })
 
+  // 检查窗口是否最大化
+  ipcMain.handle('window-is-maximized', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    return window ? window.isMaximized() : false
+  })
+
+  // 监听窗口状态变化事件
+  const setupWindowStateListeners = (window: BrowserWindow) => {
+    window.on('maximize', () => {
+      window.webContents.send('window-maximize')
+    })
+
+    window.on('unmaximize', () => {
+      window.webContents.send('window-unmaximize')
+    })
+  }
+
+  // 为新创建的编辑器窗口设置状态监听
+  ipcMain.on('setup-window-listeners', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (window) {
+      setupWindowStateListeners(window)
+    }
+  })
+
   ipcMain.handle('select-file', async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openFile'],
-      filters: [{ name: 'JSON Files', extensions: ['json'] }]
+      filters: [
+        { name: 'ExamAware 档案文件', extensions: ['exam.json'] },
+        { name: 'JSON 文件', extensions: ['json'] },
+        { name: '所有文件', extensions: ['*'] }
+      ]
+    })
+    if (result.canceled) {
+      return null
+    } else {
+      return result.filePaths[0]
+    }
+  })
+
+  ipcMain.handle('read-file', async (_event, filePath: string) => {
+    try {
+      const content = await fileApi.readFile(filePath)
+      return content
+    } catch (error) {
+      console.error('Error reading file:', error)
+      return null
+    }
+  })
+
+  ipcMain.handle('save-file', async (_, filePath: string, content: string) => {
+    try {
+      await fileApi.writeFile(filePath, content)
+      return true
+    } catch (error) {
+      console.error('Error saving file:', error)
+      return false
+    }
+  })
+
+  ipcMain.handle('save-file-dialog', async () => {
+    const result = await dialog.showSaveDialog({
+      filters: [
+        { name: 'ExamAware 档案文件', extensions: ['exam.json'] },
+        { name: 'JSON 文件', extensions: ['json'] },
+        { name: '所有文件', extensions: ['*'] }
+      ],
+      defaultPath: 'untitled.exam.json'
+    })
+    if (result.canceled) {
+      return null
+    } else {
+      return result.filePath
+    }
+  })
+
+  ipcMain.handle('open-file-dialog', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [
+        { name: 'ExamAware 档案文件', extensions: ['exam.json'] },
+        { name: 'JSON 文件', extensions: ['json'] },
+        { name: '所有文件', extensions: ['*'] }
+      ]
     })
     if (result.canceled) {
       return null

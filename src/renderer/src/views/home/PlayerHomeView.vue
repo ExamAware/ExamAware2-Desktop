@@ -43,7 +43,7 @@
 import { ref } from 'vue'
 import { NotifyPlugin } from 'tdesign-vue-next'
 
-const ipcRenderer = window.electron.ipcRenderer
+const ipcRenderer = window.api.ipc
 const filePath = ref('')
 
 const selectFile = async () => {

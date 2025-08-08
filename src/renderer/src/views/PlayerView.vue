@@ -5,7 +5,7 @@ import { getSortedExamConfig } from '@renderer/core/parser'
 import type { ExamConfig, ExamInfo } from '@renderer/core/configTypes'
 import { NotifyPlugin, DialogPlugin, Dialog } from 'tdesign-vue-next'
 import { useTimeSync, getSyncedTime } from '@renderer/utils/timeUtils'
-const { ipcRenderer } = window.electron
+const ipcRenderer = window.api.ipc
 import CurrentExamCard from '@renderer/components/CurrentExamCard.vue'
 
 const configData = ref<ExamConfig>()

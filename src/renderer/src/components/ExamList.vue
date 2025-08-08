@@ -285,7 +285,7 @@ const handleConfirmDelete = () => {
 :deep(.t-list-item) {
   cursor: pointer;
   transition: background-color 0.2s;
-  padding: 8px 8px !important;
+  padding: 16px 8px 0px 8px !important;
 }
 
 :deep(.t-list-item:hover) {
