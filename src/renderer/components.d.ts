@@ -14,8 +14,6 @@ declare module 'vue' {
     ExamForm: typeof import('./src/components/ExamForm.vue')['default']
     ExamList: typeof import('./src/components/ExamList.vue')['default']
     ExamListCard: typeof import('./src/components/ExamListCard.vue')['default']
-    PluginDevPanel: typeof import('./src/components/PluginDevPanel.vue')['default']
-    PluginManager: typeof import('./src/components/PluginManager.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SettingsPanel: typeof import('./src/components/SettingsPanel.vue')['default']

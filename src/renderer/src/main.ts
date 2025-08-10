@@ -9,7 +9,6 @@ import { createPinia } from 'pinia'
 
 import App from './App.vue'
 import router from './router'
-import { rendererPluginManager } from './plugins/RendererPluginManager'
 
 import 'vue-code-layout/lib/vue-code-layout.css'
 import CodeLayout from 'vue-code-layout'
@@ -37,12 +36,6 @@ app.use(CodeLayout)
 // // Set the initial theme
 // document.documentElement.setAttribute('theme-mode', mediaQuery.matches ? 'dark' : 'light')
 
-
 document.documentElement.setAttribute('theme-mode', 'dark')
-
-// 初始化插件管理器
-rendererPluginManager.initialize(app, router, pinia).then(() => {
-  console.log('Renderer plugin manager initialized')
-})
 
 app.mount('#app')

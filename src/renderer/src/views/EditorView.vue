@@ -203,16 +203,8 @@ onMounted(async () => {
     onNextExam: nextExam,
     onPrevExam: prevExam,
   })
-  
+
   menuData.value = menuResult.menuConfig
-  
-  // 设置菜单更新回调，当插件菜单项变化时重新获取菜单配置
-  menuResult.setMenuUpdateCallback(() => {
-    const manager = menuManager()
-    if (manager) {
-      menuData.value = manager.getMenuConfig()
-    }
-  })
 
   // 检查 CodeLayout 实例
   setTimeout(() => {

@@ -6,8 +6,6 @@ import type { MenuOptions } from '@imengyu/vue3-context-menu'
  */
 export class MenuConfigManager {
   private handlers: any
-  private menuUpdateCallback: (() => void) | null = null
-  private pluginMenuItems: Map<string, any[]> = new Map()
 
   constructor(handlers: {
     onNew: () => void
@@ -37,17 +35,12 @@ export class MenuConfigManager {
   }
 
   /**
-   * 设置菜单更新回调
-   */
-  setMenuUpdateCallback(callback: () => void): void {
-    this.menuUpdateCallback = callback
-  }
-
-  /**
    * 获取菜单配置
    */
   getMenuConfig(): MenuOptions {
-    const baseMenu: MenuOptions = {
+    return {
+      x: 0,
+      y: 0,
       items: [
         {
           label: '文件',
@@ -97,89 +90,6 @@ export class MenuConfigManager {
           ]
         }
       ]
-    }
-
-    // 添加插件菜单项
-    this.addPluginMenuItemsToConfig(baseMenu)
-
-    return baseMenu
-  }
-
-  /**
-   * 添加插件菜单项
-   */
-  addPluginMenuItem(pluginName: string, menuItem: any): void {
-    if (!this.pluginMenuItems.has(pluginName)) {
-      this.pluginMenuItems.set(pluginName, [])
-    }
-    this.pluginMenuItems.get(pluginName)!.push(menuItem)
-    this.notifyMenuUpdate()
-  }
-
-  /**
-   * 移除插件菜单项
-   */
-  removePluginMenuItem(pluginName: string, menuItemId: string): void {
-    const items = this.pluginMenuItems.get(pluginName)
-    if (items) {
-      const index = items.findIndex(item => item.id === menuItemId)
-      if (index !== -1) {
-        items.splice(index, 1)
-        this.notifyMenuUpdate()
-      }
-    }
-  }
-
-  /**
-   * 移除插件的所有菜单项
-   */
-  removeAllPluginMenuItems(pluginName: string): void {
-    if (this.pluginMenuItems.has(pluginName)) {
-      this.pluginMenuItems.delete(pluginName)
-      this.notifyMenuUpdate()
-    }
-  }
-
-  /**
-   * 将插件菜单项添加到菜单配置中
-   */
-  private addPluginMenuItemsToConfig(menuConfig: MenuOptions): void {
-    if (this.pluginMenuItems.size === 0) return
-
-    // 创建插件菜单
-    const pluginMenu = {
-      label: '插件',
-      children: [] as any[]
-    }
-
-    // 添加所有插件的菜单项
-    for (const [pluginName, items] of this.pluginMenuItems) {
-      if (items.length > 0) {
-        pluginMenu.children.push({
-          label: pluginName,
-          children: items
-        })
-      }
-    }
-
-    // 如果有插件菜单项，添加到主菜单
-    if (pluginMenu.children.length > 0) {
-      // 在帮助菜单前插入插件菜单
-      const helpIndex = menuConfig.items!.findIndex(item => item.label === '帮助')
-      if (helpIndex !== -1) {
-        menuConfig.items!.splice(helpIndex, 0, pluginMenu)
-      } else {
-        menuConfig.items!.push(pluginMenu)
-      }
-    }
-  }
-
-  /**
-   * 通知菜单更新
-   */
-  private notifyMenuUpdate(): void {
-    if (this.menuUpdateCallback) {
-      this.menuUpdateCallback()
     }
   }
 }

@@ -15,33 +15,6 @@ const api = {
     on: (channel: string, listener: (...args: any[]) => void) => ipcRenderer.on(channel, listener),
     off: (channel: string, listener: (...args: any[]) => void) => ipcRenderer.off(channel, listener),
     removeAllListeners: (channel: string) => ipcRenderer.removeAllListeners(channel)
-  },
-  plugins: {
-    getInstalledPlugins: () => ipcRenderer.invoke('plugin:get-installed'),
-    getActivePlugins: () => ipcRenderer.invoke('plugin:get-active'),
-    activatePlugin: (pluginId: string) => ipcRenderer.invoke('plugin:activate', pluginId),
-    deactivatePlugin: (pluginId: string) => ipcRenderer.invoke('plugin:deactivate', pluginId),
-    installPlugin: (pluginPath: string) => ipcRenderer.invoke('plugin:install', pluginPath),
-    uninstallPlugin: (pluginId: string) => ipcRenderer.invoke('plugin:uninstall', pluginId),
-    getPluginConfig: (pluginId: string) => ipcRenderer.invoke('plugin:get-config', pluginId),
-    updatePluginConfig: (pluginId: string, config: any) => ipcRenderer.invoke('plugin:update-config', pluginId, config),
-    createPluginTemplate: (templatePath: string, pluginName: string) => ipcRenderer.invoke('plugin:create-template', templatePath, pluginName),
-    validatePlugin: (pluginPath: string) => ipcRenderer.invoke('plugin:validate', pluginPath),
-    packagePlugin: (pluginPath: string, outputPath: string) => ipcRenderer.invoke('plugin:package', pluginPath, outputPath),
-    sendToPlugin: (pluginId: string, message: any) => ipcRenderer.invoke('plugin:send-message', pluginId, message),
-    onPluginMessage: (callback: (pluginId: string, message: any) => void) => {
-      ipcRenderer.on('plugin:message', (_, pluginId, message) => callback(pluginId, message))
-    },
-    removePluginMessageListener: () => {
-      ipcRenderer.removeAllListeners('plugin:message')
-    },
-    // 插件开发相关API
-    getDevPlugins: () => ipcRenderer.invoke('plugin-dev:get-plugins'),
-    getDevServerStatus: () => ipcRenderer.invoke('plugin-dev:get-status'),
-    loadDevPlugin: (pluginPath: string) => ipcRenderer.invoke('plugin-dev:load-plugin', pluginPath),
-    unloadDevPlugin: (pluginName: string) => ipcRenderer.invoke('plugin-dev:unload-plugin', pluginName),
-    reloadDevPlugin: (pluginName: string) => ipcRenderer.invoke('plugin-dev:reload-plugin', pluginName),
-    touchPlugin: (pluginName: string) => ipcRenderer.invoke('plugin-dev:touch-plugin', pluginName)
   }
 }
 

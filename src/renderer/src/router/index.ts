@@ -2,11 +2,8 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import EditorView from '../views/EditorView.vue'
 import HomeView from '@renderer/views/HomeView.vue'
 import MainpageView from '@renderer/views/home/MainpageView.vue'
-import PluginView from '@renderer/views/home/PluginView.vue'
 import PlayerHomeView from '@renderer/views/home/PlayerHomeView.vue'
 import ntpSettingsPage from '@renderer/views/home/ntpSettingsPage.vue'
-import PluginManager from '@renderer/components/PluginManager.vue'
-import PluginDevPanel from '@renderer/components/PluginDevPanel.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -27,24 +24,9 @@ const router = createRouter({
           component: PlayerHomeView,
         },
         {
-          path: 'pluginpage',
-          name: 'pluginpage',
-          component: PluginView,
-        },
-        {
           path: 'ntpsettings',
           name: 'ntpsettings',
           component: ntpSettingsPage,
-        },
-        {
-          path: 'plugin-manager',
-          name: 'plugin-manager',
-          component: PluginManager,
-        },
-        {
-          path: 'plugin-dev',
-          name: 'plugin-dev',
-          component: PluginDevPanel,
         }
       ],
     },

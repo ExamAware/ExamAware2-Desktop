@@ -18,24 +18,6 @@
             </template>
             放映器
           </t-menu-item>
-          <t-menu-item value="pluginpage">
-            <template #icon>
-              <t-icon name="extension" />
-            </template>
-            插件
-          </t-menu-item>
-          <t-menu-item value="plugin-manager">
-            <template #icon>
-              <t-icon name="setting" />
-            </template>
-            插件管理
-          </t-menu-item>
-          <t-menu-item value="plugin-dev">
-            <template #icon>
-              <t-icon name="code" />
-            </template>
-            插件开发
-          </t-menu-item>
           <t-menu-item value="ntpsettings">
             <template #icon>
               <t-icon name="time" />
@@ -63,10 +45,7 @@ const route = useRoute()
 const routeMap = {
   // 侧栏
   home: '/mainpage',
-  pluginpage: '/pluginpage',
   playerhome: '/playerhome',
-  'plugin-manager': '/plugin-manager',
-  'plugin-dev': '/plugin-dev',
   ntpsettings: '/ntpsettings'
 }
 
