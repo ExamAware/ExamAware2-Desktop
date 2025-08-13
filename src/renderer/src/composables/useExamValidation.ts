@@ -42,16 +42,16 @@ export function useExamValidation(examConfig: ExamConfig) {
       }
 
       // 检查考试时长是否合理（不少于5分钟，不超过24小时）
-      const duration = endTime.getTime() - startTime.getTime()
-      const minutes = duration / (1000 * 60)
+      // const duration = endTime.getTime() - startTime.getTime()
+      // const minutes = duration / (1000 * 60)
 
-      if (minutes < 5) {
-        errors.push('考试时长不能少于5分钟')
-      }
+      // if (minutes < 5) {
+      //   errors.push('考试时长不能少于5分钟')
+      // }
 
-      if (minutes > 24 * 60) {
-        errors.push('考试时长不能超过24小时')
-      }
+      // if (minutes > 24 * 60) {
+      //   errors.push('考试时长不能超过24小时')
+      // }
     }
 
     if (examInfo.alertTime < 1 || examInfo.alertTime > 120) {
