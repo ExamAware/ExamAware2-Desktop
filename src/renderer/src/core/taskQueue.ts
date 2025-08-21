@@ -82,4 +82,19 @@ export class TaskQueue {
       this.currentTimeoutId = null;
     }
   }
+
+  // 获取任务队列信息（用于调试）
+  getTaskCount(): number {
+    return this.taskQueue.length;
+  }
+
+  // 获取任务详情（用于调试）
+  getTaskDetails() {
+    return this.taskQueue.map(task => ({
+      id: task.id,
+      executeTime: task.executeTime,
+      executeTimeString: new Date(task.executeTime).toLocaleString(),
+      hasFunction: typeof task.taskFunction === 'function'
+    }));
+  }
 }

@@ -1,12 +1,13 @@
 <template>
   <div class="exam-form">
-    <t-form
-      ref="formRef"
-      :model="formData"
-      :rules="rules"
-      labelAlign="top"
-      @submit.prevent="handleSubmit"
-    >
+    <div class="form-container">
+      <t-form
+        ref="formRef"
+        :model="formData"
+        :rules="rules"
+        labelAlign="top"
+        @submit.prevent="handleSubmit"
+      >
       <t-form-item label="考试名称" name="name">
         <t-input
           v-model="formData.name"
@@ -50,6 +51,14 @@
         />
       </t-form-item>
 
+      <t-form-item label="考试材料">
+        <ExamMaterialsPanel
+          v-model="formData.materials"
+          @update:modelValue="handleMaterialsChange"
+          style="width: 100%"
+        />
+      </t-form-item>
+
       <t-form-item v-if="showActions && (allowDelete || allowReset)">
         <t-space>
           <t-button variant="outline" @click="handleReset" v-if="allowReset">
@@ -61,6 +70,7 @@
         </t-space>
       </t-form-item>
     </t-form>
+    </div>
   </div>
 </template>
 
@@ -69,6 +79,8 @@ import { ref, reactive, watch, computed } from 'vue'
 import type { ExamInfo } from '@renderer/core/configTypes'
 import type { FormRule } from 'tdesign-vue-next'
 import { formatLocalDateTime, parseDateTime } from '@renderer/utils/dateFormat'
+import ExamMaterialsPanel from './ExamMaterialsPanel.vue'
+import type { ExamMaterial } from '@renderer/core/configTypes'
 
 interface Props {
   modelValue?: ExamInfo
@@ -103,6 +115,7 @@ const formData = reactive<ExamInfo>({
   start: '',
   end: '',
   alertTime: 15,
+  materials: [],
 })
 
 // 用于日期选择器的计算属性（转换格式）
@@ -224,6 +237,12 @@ const handleFieldChange = (field: keyof ExamInfo) => {
   }
 }
 
+// 处理材料变化
+const handleMaterialsChange = (materials: ExamMaterial[]) => {
+  formData.materials = materials
+  handleFieldChange('materials' as keyof ExamInfo)
+}
+
 const autoSaveTimer = ref<ReturnType<typeof setTimeout>>()
 
 // 处理提交
@@ -273,6 +292,14 @@ defineExpose({
 
 <style scoped>
 .exam-form {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-container {
+  flex: 1;
+  overflow-y: auto;
   padding: 16px;
 }
 

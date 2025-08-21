@@ -59,6 +59,7 @@ export class ExamConfigManager {
       start: formatLocalDateTime(start),
       end: formatLocalDateTime(end),
       alertTime: 15,
+      materials: [],
       ...examInfo,
     }
 

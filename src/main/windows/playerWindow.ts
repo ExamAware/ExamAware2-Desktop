@@ -3,6 +3,9 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { is } from '@electron-toolkit/utils'
 
+// 导入配置数据设置函数
+import { setCurrentConfigData } from '../ipcHandlers'
+
 export function createPlayerWindow(configPath: string): BrowserWindow {
   const playerWindow = new BrowserWindow({
     width: 1920,
@@ -38,9 +41,13 @@ export function createPlayerWindow(configPath: string): BrowserWindow {
       console.error('Failed to read config file:', err)
       return
     }
+
+    // 通知主进程存储配置数据
+    setCurrentConfigData(data)
+
     setTimeout(() => {
       playerWindow.webContents.send('load-config', data)
-      console.log('Config file loaded:', data)
+      console.log('Config file loaded and sent to renderer:', data)
     }, 1000)
   })
 

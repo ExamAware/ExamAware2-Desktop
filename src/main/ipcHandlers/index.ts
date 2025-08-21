@@ -3,9 +3,35 @@ import { createEditorWindow } from '../windows/editorWindow'
 import { createPlayerWindow } from '../windows/playerWindow'
 import { fileApi } from '../fileUtils'
 
+// 存储当前加载的配置数据
+let currentConfigData: string | null = null
+
+// 导出函数以供其他模块使用
+export function setCurrentConfigData(data: string) {
+  console.log('Setting config data via function:', data)
+  currentConfigData = data
+}
+
+export function getCurrentConfigData(): string | null {
+  return currentConfigData
+}
+
 export function registerIpcHandlers(): void {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+
+  // Handle get current config data
+  ipcMain.handle('get-config', () => {
+    const config = getCurrentConfigData()
+    console.log('get-config requested, returning:', config)
+    return config
+  })
+
+  // Handle set config data (called from playerWindow)
+  ipcMain.on('set-config', (_event, data: string) => {
+    console.log('Setting config data via IPC:', data)
+    setCurrentConfigData(data)
+  })
 
   // Handle open editor window request
   ipcMain.on('open-editor-window', () => {

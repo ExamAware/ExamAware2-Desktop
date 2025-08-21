@@ -92,8 +92,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (showControls && !isMacOS && ipcRenderer) {
-    ipcRenderer.removeListener('window-maximize', handleWindowStateChange)
-    ipcRenderer.removeListener('window-unmaximize', handleWindowStateChange)
+    ipcRenderer.off('window-maximize', handleWindowStateChange)
+    ipcRenderer.off('window-unmaximize', handleWindowStateChange)
   }
 })
 </script>
