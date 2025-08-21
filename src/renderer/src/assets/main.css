@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 html,
 body,
 #app {
@@ -119,3 +123,9 @@ p {
 .t-menu__operations .t-menu__item {
   padding-left: 11px !important;
 }
+
+/* 使.code-layout-split-base .split-n-container>.content 内容区在垂直方向溢出时自动滚动 */
+.content {
+  overflow-y: auto !important;
+}
+
