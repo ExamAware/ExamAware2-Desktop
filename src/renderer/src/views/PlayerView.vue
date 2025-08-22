@@ -1,14 +1,31 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { TaskQueue } from '@renderer/core/taskQueue'
 import type { ExamConfig, ExamInfo } from '@renderer/core/configTypes'
 import { NotifyPlugin, DialogPlugin } from 'tdesign-vue-next'
-import { useTimeSync, getSyncedTime } from '@renderer/utils/timeUtils'
+import { useTimeSync, getSyncedTime, addTimeSyncChangeListener, removeTimeSyncChangeListener } from '@renderer/utils/timeUtils'
 import { useExamValidation } from '@renderer/composables/useExamValidation'
 import { useConfigLoader } from '@renderer/composables/useConfigLoader'
 import { parseExamConfig, validateExamConfig, hasExamTimeOverlap, getSortedExamConfig } from '@renderer/core/parser'
 import { RecentFileManager } from '@renderer/core/recentFileManager'
+import Keyboard from 'simple-keyboard'
+import 'simple-keyboard/build/css/index.css'
+
+import InfoCardWithIcon from '@renderer/components/player/InfoCardWithIcon.vue'
+import InfoItem from '@renderer/components/player/InfoItem.vue'
+import BaseCard from '@renderer/components/player/BaseCard.vue'
+import ActionButtonBar from '@renderer/components/player/ActionButtonBar.vue'
+import ExamRoomNumber from '@renderer/components/player/ExamRoomNumber.vue'
+import CurrentExamInfo from '@renderer/components/player/CurrentExamInfo.vue'
+
 const ipcRenderer = window.api.ipc
+
+// 考场号相关状态
+const roomNumber = ref('01') // 默认考场号
+const showRoomNumberModal = ref(false) // 控制弹窗显示
+const tempRoomNumber = ref('01') // 临时考场号（用于弹窗输入）
+const keyboardRef = ref<HTMLElement>() // 键盘容器引用
+let keyboardInstance: Keyboard | null = null // 键盘实例
 
 // 使用新的配置加载器
 const {
@@ -26,7 +43,34 @@ const {
 const taskQueue = new TaskQueue(getSyncedTime) // 使用同步时间函数
 const nowExamInfo = ref<ExamInfo>()
 const currentExamIndex = ref(0)
-const { syncStatus, performSync } = useTimeSync()
+const { syncStatus, performSync, currentTime } = useTimeSync()
+
+// 时间同步变更处理函数
+const handleTimeSyncChange = () => {
+  console.log('PlayerView 收到时间同步变更通知')
+
+  // 更新任务队列的时间函数
+  taskQueue.updateTimeFunction(getSyncedTime)
+
+  // 重新评估当前考试
+  if (configData.value?.examInfos) {
+    updateCurrentExam()
+
+    // 重新设置任务队列
+    parseExamInfosToTasks(configData.value.examInfos, configData.value)
+  }
+}
+
+// 格式化当前时间显示
+const formattedCurrentTime = computed(() => {
+  const time = new Date(currentTime.value)
+  return time.toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+})
 
 // 解析考试信息并添加到任务队列
 const parseExamInfosToTasks = (examInfos: ExamInfo[], config: ExamConfig) => {
@@ -140,14 +184,15 @@ const parseExamInfosToTasks = (examInfos: ExamInfo[], config: ExamConfig) => {
               closeBtn: true
             })
 
-            // 如果有下一场考试，自动切换
-            if (index < sortedExamInfos.length - 1) {
-              currentExamIndex.value = index + 1
-              nowExamInfo.value = sortedExamInfos[index + 1]
-              console.log(`自动切换到下一场考试: ${sortedExamInfos[index + 1].name}`)
+            // 立即重新评估当前考试状态
+            updateCurrentExam()
+
+            // 如果当前考试已经自动切换到下一场，显示切换通知
+            if (nowExamInfo.value && nowExamInfo.value.name !== exam.name) {
+              console.log(`自动切换到下一场考试: ${nowExamInfo.value.name}`)
               NotifyPlugin.info({
                 title: '已切换到下一场考试',
-                content: `当前考试: ${sortedExamInfos[index + 1].name}`,
+                content: `当前考试: ${nowExamInfo.value.name}`,
                 placement: 'bottom-right',
                 closeBtn: true
               })
@@ -252,6 +297,63 @@ const examStatus = computed(() => {
       status: 'completed',
       message: '已结束'
     }
+  }
+})
+
+// 当前考试科目名称
+const currentExamName = computed(() => {
+  return nowExamInfo.value?.name || '暂无考试'
+})
+
+// 当前考试时间范围
+const currentExamTimeRange = computed(() => {
+  if (!nowExamInfo.value) return '暂无安排'
+
+  const start = new Date(nowExamInfo.value.start)
+  const end = new Date(nowExamInfo.value.end)
+
+  return `${start.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })} - ${end.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })}`
+})
+
+// 剩余时间
+const remainingTime = computed(() => {
+  if (!nowExamInfo.value) return '暂无考试'
+
+  const now = currentTime.value // 使用响应式的 currentTime 而不是 getSyncedTime()
+  const endTime = new Date(nowExamInfo.value.end).getTime()
+  const startTime = new Date(nowExamInfo.value.start).getTime()
+
+  // 如果考试还未开始
+  if (now < startTime) {
+    const timeToStart = startTime - now
+    const hours = Math.floor(timeToStart / (1000 * 60 * 60))
+    const minutes = Math.floor((timeToStart % (1000 * 60 * 60)) / (1000 * 60))
+    const seconds = Math.floor((timeToStart % (1000 * 60)) / 1000)
+
+    if (hours > 0) {
+      return `${hours}小时${minutes}分钟后开始`
+    } else if (minutes > 0) {
+      return `${minutes}分钟${seconds}秒后开始`
+    } else {
+      return `${seconds}秒后开始`
+    }
+  }
+
+  // 如果考试已结束
+  if (now >= endTime) {
+    return '考试已结束'
+  }
+
+  // 考试进行中，显示剩余时间
+  const remaining = endTime - now
+  const hours = Math.floor(remaining / (1000 * 60 * 60))
+  const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((remaining % (1000 * 60)) / 1000)
+
+  if (hours > 0) {
+    return `${hours}小时${minutes}分${seconds}秒`
+  } else {
+    return `${minutes}分${seconds}秒`
   }
 })
 
@@ -446,6 +548,8 @@ if (typeof window !== 'undefined') {
     get taskCount() { return taskQueue.getTaskCount() },
     get taskDetails() { return taskQueue.getTaskDetails() },
     get syncStatus() { return syncStatus.value },
+    get currentTime() { return currentTime.value },
+    get formattedTime() { return formattedCurrentTime.value },
     get loading() { return loading.value },
     get source() { return configSource.value },
     get recentFiles() { return RecentFileManager.getRecentFiles() },
@@ -476,6 +580,9 @@ if (typeof window !== 'undefined') {
       })
       console.log(`已添加测试任务，将在 ${delaySeconds} 秒后执行`)
     },
+    // 时间同步调试方法
+    syncTime: () => performSync(),
+    getSyncedTime: () => getSyncedTime(),
     getConfigLoader: () => ({ configData, loading, configError, configSource })
   }
 }
@@ -496,6 +603,9 @@ onMounted(async () => {
   }
 
   console.log('IPC renderer available, setting up listeners...')
+
+  // 添加时间同步变更监听器
+  addTimeSyncChangeListener(handleTimeSyncChange)
 
   // 执行时间同步
   performSyncAndUpdateStatus().catch(console.error)
@@ -552,12 +662,16 @@ onMounted(async () => {
 
 onUnmounted(() => {
   taskQueue.stop()
+
+  // 移除时间同步变更监听器
+  removeTimeSyncChangeListener(handleTimeSyncChange)
 })
 
 // 监听当前考试变化
 watch(currentExamIndex, (newIndex) => {
   if (configData.value?.examInfos) {
-    nowExamInfo.value = configData.value.examInfos[newIndex]
+    const sortedConfig = getSortedExamConfig(configData.value)
+    nowExamInfo.value = sortedConfig.examInfos[newIndex]
   }
 })
 
@@ -566,16 +680,35 @@ watch(syncStatus, () => {
   taskQueue.updateTimeFunction(getSyncedTime)
 })
 
+// 监听当前时间变化，定期检查考试状态
+watch(currentTime, (newTime) => {
+  if (configData.value?.examInfos && !loading.value) {
+    // 每30秒检查一次考试状态是否需要更新
+    if (newTime % 30000 < 1000) {
+      console.log('定期检查考试状态...')
+      updateCurrentExam()
+    }
+  }
+}, { immediate: false })
+
 const performSyncAndUpdateStatus = async () => {
   try {
+    console.log('开始执行时间同步...')
     await performSync()
+    console.log('时间同步成功')
+
     // 同步成功后，重新评估当前考试
     if (configData.value?.examInfos) {
+      console.log('时间同步后重新评估考试状态...')
+
       // 更新任务队列时间函数
       taskQueue.updateTimeFunction(getSyncedTime)
+
       // 找到当前时间最接近的考试
       updateCurrentExam()
+
       // 重新解析任务队列（parseExamInfosToTasks 内部会清理旧任务）
+      console.log('重新设置任务队列...')
       parseExamInfosToTasks(configData.value.examInfos, configData.value)
     }
   } catch (error) {
@@ -590,47 +723,71 @@ const performSyncAndUpdateStatus = async () => {
   }
 }
 
-// 更新当前考试的辅助函数
+// 更新当前考试的辅助函数 - 智能选择当前应该显示的考试
 const updateCurrentExam = () => {
   if (!configData.value?.examInfos) return
 
   const now = getSyncedTime()
-  let closestExamIndex = 0
-  let closestTimeDiff = Infinity
-  let allExamsCompleted = true
+  const sortedConfig = getSortedExamConfig(configData.value)
+  const sortedExamInfos = sortedConfig.examInfos
 
-  configData.value.examInfos.forEach((exam, index) => {
+  console.log('智能更新当前考试，当前时间:', new Date(now).toLocaleString())
+  console.log('可用考试列表:', sortedExamInfos.map(e => `${e.name}(${new Date(e.start).toLocaleTimeString()}-${new Date(e.end).toLocaleTimeString()})`))
+
+  let targetExamIndex = 0
+  let foundSuitableExam = false
+
+  // 第一步：寻找正在进行的考试（最高优先级）
+  for (let i = 0; i < sortedExamInfos.length; i++) {
+    const exam = sortedExamInfos[i]
     const startTime = new Date(exam.start).getTime()
     const endTime = new Date(exam.end).getTime()
 
-    // 如果有任何考试未结束，标记为不是所有考试都已完成
-    if (now < endTime) {
-      allExamsCompleted = false
-    }
-
-    // 如果考试正在进行
     if (now >= startTime && now < endTime) {
-      closestExamIndex = index
-      closestTimeDiff = 0 // 正在进行的考试优先级最高
+      targetExamIndex = i
+      foundSuitableExam = true
+      console.log(`找到正在进行的考试: "${exam.name}" (索引: ${i})`)
+      break
     }
-    // 如果考试即将开始且没有找到正在进行的考试
-    else if (now < startTime && closestTimeDiff !== 0) {
-      const timeDiff = Math.abs(startTime - now)
-      if (timeDiff < closestTimeDiff) {
-        closestTimeDiff = timeDiff
-        closestExamIndex = index
-      }
-    }
-  })
-
-  // 如果所有考试都已结束，选择最后一场考试
-  if (allExamsCompleted && configData.value.examInfos.length > 0) {
-    closestExamIndex = configData.value.examInfos.length - 1
   }
 
-  // 设置当前考试
-  currentExamIndex.value = closestExamIndex
-  nowExamInfo.value = configData.value.examInfos[closestExamIndex]
+  // 第二步：如果没有正在进行的考试，找最近的未开始考试（第二优先级）
+  if (!foundSuitableExam) {
+    console.log('没有找到正在进行的考试，寻找最近的未开始考试...')
+    for (let i = 0; i < sortedExamInfos.length; i++) {
+      const exam = sortedExamInfos[i]
+      const startTime = new Date(exam.start).getTime()
+
+      if (now < startTime) {
+        targetExamIndex = i
+        foundSuitableExam = true
+        console.log(`找到最近的未开始考试: "${exam.name}" (索引: ${i})`)
+        break
+      }
+    }
+  }
+
+  // 第三步：如果所有考试都已结束，显示最后一场考试（兜底方案）
+  if (!foundSuitableExam && sortedExamInfos.length > 0) {
+    targetExamIndex = sortedExamInfos.length - 1
+    console.log('所有考试已完成，显示最后一场考试')
+  }
+
+  // 检查是否需要切换考试
+  const newExam = sortedExamInfos[targetExamIndex]
+  const currentExam = nowExamInfo.value
+
+  if (!currentExam || currentExam.name !== newExam.name || currentExamIndex.value !== targetExamIndex) {
+    console.log(`切换考试: "${currentExam?.name || '无'}" -> "${newExam.name}"`)
+
+    // 更新当前考试
+    currentExamIndex.value = targetExamIndex
+    nowExamInfo.value = newExam
+
+    console.log(`当前考试已更新为: "${newExam.name}" (索引: ${targetExamIndex})`)
+  } else {
+    console.log(`当前考试无需更新: "${newExam.name}"`)
+  }
 }
 
 // // 监听当前时间变化，自动更新考试状态
@@ -662,14 +819,19 @@ const closeWindow = () => {
 const formattedExamInfos = computed(() => {
   if (!configData.value?.examInfos) return [];
 
-  return configData.value.examInfos.map((exam, index) => {
+  // 使用排序后的配置确保考试按时间顺序显示
+  const sortedConfig = getSortedExamConfig(configData.value);
+
+  let lastDisplayedDate = '';
+
+  return sortedConfig.examInfos.map((exam, index) => {
     const startDate = new Date(exam.start);
     const endDate = new Date(exam.end);
-    const now = getSyncedTime();
+    const now = currentTime.value; // 使用响应式的 currentTime 而不是 getSyncedTime()
 
     // 判断考试状态
     let status = 'pending';
-    let statusText = '未开始';
+    let statusText: '已结束' | '进行中' | '未开始' = '未开始';
 
     if (now > endDate.getTime()) {
       status = 'completed';
@@ -679,10 +841,20 @@ const formattedExamInfos = computed(() => {
       statusText = '进行中';
     }
 
+    // 格式化日期
+    const dateString = startDate.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+
+    // 决定是否显示日期：只有当前考试的日期与前一个考试不同时才显示
+    let displayDate = '';
+    if (dateString !== lastDisplayedDate) {
+      displayDate = dateString;
+      lastDisplayedDate = dateString;
+    }
+
     return {
       index,
       name: exam.name,
-      date: startDate.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' }),
+      date: displayDate, // 可能为空字符串
       timeRange: `${formatHourMinute(startDate)} ~ ${formatHourMinute(endDate)}`,
       status,
       statusText,
@@ -709,10 +881,454 @@ const getStatusTheme = (row) => {
   };
   return statusThemeMap[row.status] || 'default';
 };
+
+
+const mainTitleRef = ref<HTMLElement>()
+const subtitleRef = ref<HTMLElement>()
+
+const adjustTitleSize = () => {
+  if (!mainTitleRef.value || !subtitleRef.value) return
+
+  const container = mainTitleRef.value.parentElement
+  if (!container) return
+
+  // 等待DOM更新完成再计算
+  setTimeout(() => {
+    const containerWidth = container.clientWidth
+    console.log('容器宽度:', containerWidth)
+
+    // 标题字体大小不受UI缩放影响，基于容器宽度动态调整
+    let fontSize = 50 // 起始字体大小（px）
+    mainTitleRef.value!.style.fontSize = `${fontSize}px`
+
+    // 强制重新计算布局
+    void mainTitleRef.value!.offsetHeight
+
+    let scrollWidth = mainTitleRef.value!.scrollWidth
+    console.log('初始文字宽度:', scrollWidth, '字体大小:', fontSize)
+
+    // 逐步减小字体直到文字宽度小于等于容器宽度
+    while (scrollWidth > containerWidth && fontSize > 12) {
+      fontSize -= 0.5 // 使用更小的步长以获得更精确的结果
+      mainTitleRef.value!.style.fontSize = `${fontSize}px`
+
+      // 强制重新计算布局
+      void mainTitleRef.value!.offsetHeight
+      scrollWidth = mainTitleRef.value!.scrollWidth
+
+      console.log('调整中 - 文字宽度:', scrollWidth, '字体大小:', fontSize)
+    }
+
+    console.log('最终字体大小:', fontSize)
+
+    // 让标题字体稍微小一点点（减少2-3px）
+    fontSize = fontSize - 5
+    mainTitleRef.value!.style.fontSize = `${fontSize}px`
+
+    // 调整副标题字体大小（保持与主标题的比例，约40%）
+    const subtitleFontSize = fontSize * 0.4
+    subtitleRef.value!.style.fontSize = `${subtitleFontSize}px`
+  }, 10)
+}
+
+const handleEditClick = () => {
+  console.log('编辑按钮被点击')
+  // 这里可以添加编辑功能的逻辑
+}
+
+// 考场号相关处理函数
+const handleRoomNumberClick = () => {
+  tempRoomNumber.value = roomNumber.value
+  showRoomNumberModal.value = true
+
+  // 下一帧初始化键盘
+  nextTick(() => {
+    initKeyboard()
+  })
+}
+
+const handleRoomNumberConfirm = () => {
+  roomNumber.value = tempRoomNumber.value
+  showRoomNumberModal.value = false
+  destroyKeyboard()
+  NotifyPlugin.success({
+    title: '考场号设置成功',
+    content: `考场号已设置为: ${roomNumber.value}`,
+    placement: 'bottom-right',
+    closeBtn: true
+  })
+}
+
+const handleRoomNumberCancel = () => {
+  showRoomNumberModal.value = false
+  tempRoomNumber.value = roomNumber.value // 重置临时值
+  destroyKeyboard()
+}
+
+// 初始化虚拟键盘
+const initKeyboard = () => {
+  if (keyboardRef.value && !keyboardInstance) {
+    keyboardInstance = new Keyboard(keyboardRef.value, {
+      layout: {
+        default: [
+          "1 2 3",
+          "4 5 6",
+          "7 8 9",
+          "{clear} 0 {bksp}"
+        ]
+      },
+      display: {
+        '{clear}': '清空',
+        '{bksp}': '⌫ 删除'
+      },
+      theme: 'hg-theme-default hg-layout-numeric numeric-keyboard-dark',
+      physicalKeyboardHighlight: false,
+      syncInstanceInputs: false,
+      mergeDisplay: true,
+      onKeyPress: (button: string) => onKeyPress(button)
+    })
+  }
+}
+
+// 销毁虚拟键盘
+const destroyKeyboard = () => {
+  if (keyboardInstance) {
+    keyboardInstance.destroy()
+    keyboardInstance = null
+  }
+}
+
+// 键盘按键处理
+const onKeyPress = (button: string) => {
+  if (button === '{clear}') {
+    tempRoomNumber.value = ''
+  } else if (button === '{bksp}') {
+    tempRoomNumber.value = tempRoomNumber.value.slice(0, -1)
+  } else {
+    // 限制只能输入数字和字母，最大长度10
+    if (/^[0-9a-zA-Z]$/.test(button) && tempRoomNumber.value.length < 10) {
+      tempRoomNumber.value += button
+    }
+  }
+}
+
+onMounted(() => {
+  adjustTitleSize()
+  window.addEventListener('resize', adjustTitleSize)
+
+  // 监听UI缩放变化
+  const observer = new MutationObserver(() => {
+    adjustTitleSize()
+  })
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['style'],
+  })
+
+  // 清理函数在组件卸载时执行
+  window.addEventListener('beforeunload', () => {
+    observer.disconnect()
+  })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', adjustTitleSize)
+  destroyKeyboard() // 清理键盘实例
+})
 </script>
 
 <template>
+
+
+  <div class="exam-container">
+    <!-- 背景渐变椭圆 -->
+    <div class="background-ellipse"></div>
+
+    <!-- 考场号 -->
+
+    <!-- 主要内容 -->
+    <div class="content-wrapper">
+      <!-- 左侧列 -->
+      <div class="left-column">
+        <div class="logo-container">
+          <span class="logo-text">DSZ ExamAware 知试</span>
+        </div>
+
+        <!-- 标题区域 -->
+        <div class="title-section">
+          <h1 ref="mainTitleRef" class="main-title">{{ configData?.examName || '考试' }}</h1>
+          <p ref="subtitleRef" class="subtitle">{{ configData?.message || '请遵守考场纪律' }}</p>
+        </div>
+
+        <!-- 时钟卡片 -->
+        <BaseCard custom-class="clock-card">
+          <div class="clock-content">
+            <div class="time-display">{{ formattedCurrentTime }}</div>
+            <div class="time-note">
+              <div>{{ syncStatus === 'success' ? '联网时间' : '电脑时间' }}仅供参考</div>
+              <div>以考场铃声为准</div>
+            </div>
+          </div>
+        </BaseCard>
+
+        <!-- 考试信息卡片 -->
+        <InfoCardWithIcon
+          title="当前考试信息"
+          @icon-click="handleEditClick"
+          custom-class="exam-info-card"
+        >
+          <InfoItem label="当前科目" :value="currentExamName" />
+          <InfoItem label="考试时间" :value="currentExamTimeRange" />
+          <InfoItem label="剩余时间" :value="remainingTime" />
+
+          <!-- 动态展开考试材料 -->
+          <template v-if="nowExamInfo?.materials && nowExamInfo.materials.length > 0">
+            <InfoItem
+              v-for="material in nowExamInfo.materials"
+              :key="material.name"
+              :label="material.name"
+              :value="`${material.quantity}${material.unit}`"
+            />
+          </template>
+          <!-- <InfoItem v-else label="考试材料" value="暂无材料" /> -->
+
+          <div></div>
+        </InfoCardWithIcon>
+
+        <!-- 内容将在后续添加 -->
+      </div>
+
+      <!-- 右侧列 -->
+      <div class="right-column">
+        <div class="exam-room-container">
+          <ExamRoomNumber :room-number="roomNumber" @click="handleRoomNumberClick" />
+        </div>
+
+        <!-- 本次考试信息卡片 -->
+        <CurrentExamInfo :exam-infos="formattedExamInfos" />
+      </div>
+    </div>
+
+    <!-- 底部按钮栏 -->
+    <ActionButtonBar />
+
+    <!-- 考场号设置弹窗 -->
+    <t-dialog
+      v-model:visible="showRoomNumberModal"
+      header="设置考场号"
+      :confirm-btn="{ content: '确认', theme: 'primary' }"
+      :cancel-btn="{ content: '取消', theme: 'default' }"
+      @confirm="handleRoomNumberConfirm"
+      @cancel="handleRoomNumberCancel"
+      @close="handleRoomNumberCancel"
+      close-on-esc-keydown
+      width="480px"
+    >
+      <div style="padding: 20px 0;">
+        <t-form>
+          <t-form-item label="考场号">
+            <t-input
+              v-model="tempRoomNumber"
+              placeholder="请输入考场号"
+              style="width: 100%;"
+              maxlength="10"
+              readonly
+            />
+          </t-form-item>
+        </t-form>
+
+        <!-- 虚拟键盘容器 -->
+        <div class="keyboard-container">
+          <div ref="keyboardRef" class="virtual-keyboard"></div>
+        </div>
+      </div>
+    </t-dialog>
+  </div>
 </template>
 
+
 <style scoped>
+* {
+  font-family: 'MiSans';
+}
+
+.exam-container {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background: #02080d;
+}
+
+.background-ellipse {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 100%;
+  height: 45%;
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    rgba(55, 88, 255, 0.3) 0%,
+    rgba(70, 82, 255, 0) 100%
+  );
+
+  border-radius: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  z-index: 0;
+}
+
+.exam-room-container {
+  margin-bottom: calc(var(--ui-scale, 1) * 2rem);
+  display: flex;
+  justify-content: flex-end; /* 右对齐 */
+}
+
+.logo-container {
+  position: relative;
+  margin-bottom: calc(var(--ui-scale, 1) * 40px * 100vh / 1080px);
+  z-index: 20;
+}
+
+.logo-text {
+  color: #ffffff;
+  font-size: calc(var(--ui-scale, 1) * 1.25rem);
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+.title-section {
+  margin-bottom: calc(var(--ui-scale, 1) * 3rem);
+}
+
+.main-title {
+  color: #ffffff;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: calc(var(--ui-scale, 1) * 1rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.subtitle {
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.clock-card {
+  margin-bottom: calc(var(--ui-scale, 1) * 2rem);
+}
+
+.clock-content {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--ui-scale, 1) * 2rem);
+}
+
+.time-display {
+  font-size: calc(var(--ui-scale, 1) * 4rem);
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 calc(var(--ui-scale, 1) * 0.167rem) calc(var(--ui-scale, 1) * 1.458rem)
+    rgba(255, 255, 255, 0.3);
+  font-family: 'TCloudNumber', 'MiSans', monospace;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.time-note {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: calc(var(--ui-scale, 1) * 1.5rem);
+  line-height: calc(var(--ui-scale, 1) * 2rem);
+}
+
+.exam-info-card {
+  margin-bottom: calc(var(--ui-scale, 1) * 2rem);
+}
+
+.content-wrapper {
+  position: relative;
+  z-index: 10;
+  height: 100vh;
+  display: flex;
+  padding: calc(var(--ui-scale, 1) * 4rem) calc(var(--ui-scale, 1) * 2rem) calc(var(--ui-scale, 1) * 8rem)
+    calc(var(--ui-scale, 1) * 2rem); /* 增加顶部padding和底部padding为按钮栏留出空间 */
+  gap: calc(var(--ui-scale, 1) * 100px);
+}
+
+.left-column {
+  width: 50%;
+  min-width: 0; /* 允许收缩 */
+  padding-top: calc(var(--ui-scale, 1) * 40px * 100vh / 1080px);
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+.right-column {
+  width: 50%;
+  min-width: 0; /* 允许收缩 */
+  padding-top: calc(var(--ui-scale, 1) * 40px * 100vh / 1080px);
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+/* 虚拟键盘样式 */
+.keyboard-container {
+  margin-top: 20px;
+}
+
+.virtual-keyboard {
+  background: transparent;
+}
+
+/* 暗色主题数字键盘样式 */
+:deep(.numeric-keyboard-dark) {
+  background: #1a1a1a !important;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+:deep(.numeric-keyboard-dark .hg-button) {
+  background: #2d2d2d !important;
+  color: #ffffff !important;
+  border: 1px solid #404040 !important;
+  border-radius: 6px !important;
+  height: 50px !important;
+  margin: 3px !important;
+  font-size: 18px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+:deep(.numeric-keyboard-dark .hg-button:hover) {
+  background: #3d3d3d !important;
+  border-color: #505050 !important;
+  transform: translateY(-1px) !important;
+}
+
+:deep(.numeric-keyboard-dark .hg-button:active) {
+  background: #1d1d1d !important;
+  transform: translateY(0) !important;
+}
+
+:deep(.numeric-keyboard-dark .hg-button.hg-functionBtn) {
+  background: #0052d9 !important;
+  color: #ffffff !important;
+  border-color: #0052d9 !important;
+}
+
+:deep(.numeric-keyboard-dark .hg-button.hg-functionBtn:hover) {
+  background: #1668dc !important;
+  border-color: #1668dc !important;
+}
+
+:deep(.numeric-keyboard-dark .hg-row) {
+  display: flex !important;
+  justify-content: center !important;
+}
 </style>
+

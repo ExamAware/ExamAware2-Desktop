@@ -21,6 +21,7 @@ export default defineConfig({
         '@renderer': resolve('src/renderer/src')
       }
     },
+    assetsInclude: ['**/*.ttf', '**/*.woff', '**/*.woff2', '**/*.otf'],
     plugins: [
       vue(),
       vueJsx(),

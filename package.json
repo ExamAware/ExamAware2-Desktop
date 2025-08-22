@@ -25,6 +25,7 @@
     "@electron-toolkit/utils": "^3.0.0",
     "chokidar": "^4.0.3",
     "electron-updater": "^6.6.2",
+    "simple-keyboard": "^3.8.81",
     "uuid": "^11.1.0",
     "vue-qrcode-reader": "^5.7.3"
   },

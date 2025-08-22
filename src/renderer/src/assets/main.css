@@ -1,3 +1,13 @@
+/* 自定义字体定义 */
+@font-face {
+  font-family: 'TCloudNumber';
+  src: url('./fonts/TCloudNumberVF.ttf') format('truetype-variations'),
+       url('./fonts/TCloudNumberVF.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 html,
 body,
 #app {

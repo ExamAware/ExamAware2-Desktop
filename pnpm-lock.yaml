@@ -20,6 +20,9 @@ importers:
       electron-updater:
         specifier: ^6.6.2
         version: 6.6.2
+      simple-keyboard:
+        specifier: ^3.8.81
+        version: 3.8.81
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
@@ -2741,6 +2744,9 @@ packages:
   signal-exit@4.1.0:
     resolution: {integrity: sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==}
     engines: {node: '>=14'}
+
+  simple-keyboard@3.8.81:
+    resolution: {integrity: sha512-riuQl6lj+dl+zpVyvmF/K+yrhd0Uo4EU/EKI5ITugaSJwOcOYqUrJ4qErr63Zv7WulQmL4LyWBgL4R6JFT/N+w==}
 
   simple-update-notifier@2.0.0:
     resolution: {integrity: sha512-a2B9Y0KlNXl9u/vsW6sTIu9vGEpfKu2wRV6l1H3XEas/0gUIzGzBoP/IouTcUQbm9JWZLH3COxyn03TYlFax6w==}
@@ -5941,6 +5947,8 @@ snapshots:
   shell-quote@1.8.3: {}
 
   signal-exit@4.1.0: {}
+
+  simple-keyboard@3.8.81: {}
 
   simple-update-notifier@2.0.0:
     dependencies:

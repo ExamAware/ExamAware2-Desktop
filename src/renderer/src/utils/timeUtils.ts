@@ -10,6 +10,34 @@ let lastSyncInfo = {
   lastSyncTime: 0
 }
 
+// 时间同步变更监听器
+type TimeSyncChangeListener = () => void
+const timeSyncChangeListeners: TimeSyncChangeListener[] = []
+
+// 添加时间同步变更监听器
+export function addTimeSyncChangeListener(listener: TimeSyncChangeListener) {
+  timeSyncChangeListeners.push(listener)
+}
+
+// 移除时间同步变更监听器
+export function removeTimeSyncChangeListener(listener: TimeSyncChangeListener) {
+  const index = timeSyncChangeListeners.indexOf(listener)
+  if (index > -1) {
+    timeSyncChangeListeners.splice(index, 1)
+  }
+}
+
+// 通知所有监听器时间同步发生了变更
+function notifyTimeSyncChange() {
+  timeSyncChangeListeners.forEach(listener => {
+    try {
+      listener()
+    } catch (error) {
+      console.error('时间同步变更监听器执行失败:', error)
+    }
+  })
+}
+
 // 获取同步后的当前时间
 export function getSyncedTime(): number {
   // 如果未连接到主进程或者没有进行过同步，则使用本地时间
@@ -29,7 +57,21 @@ export async function getTimeSyncInfo() {
       return null
     }
     const info = await ipcRenderer.invoke('time:get-sync-info')
+
+    // 检查时间同步信息是否发生变化
+    const hasChanged = (
+      lastSyncInfo.offset !== info.offset ||
+      lastSyncInfo.manualOffset !== info.manualOffset ||
+      lastSyncInfo.lastSyncTime !== info.lastSyncTime
+    )
+
     lastSyncInfo = info
+
+    // 如果时间同步信息发生变化，通知所有监听器
+    if (hasChanged) {
+      notifyTimeSyncChange()
+    }
+
     return info
   } catch (error) {
     console.error('获取时间同步信息失败:', error)
@@ -45,7 +87,21 @@ export async function syncTime() {
       throw new Error('IPC renderer not available')
     }
     const result = await ipcRenderer.invoke('time:sync-now')
+
+    // 检查时间同步信息是否发生变化
+    const hasChanged = (
+      lastSyncInfo.offset !== result.offset ||
+      lastSyncInfo.manualOffset !== result.manualOffset ||
+      lastSyncInfo.lastSyncTime !== result.lastSyncTime
+    )
+
     lastSyncInfo = result
+
+    // 如果时间同步信息发生变化，通知所有监听器
+    if (hasChanged) {
+      notifyTimeSyncChange()
+    }
+
     return result
   } catch (error) {
     console.error('时间同步失败:', error)
@@ -60,7 +116,12 @@ export async function updateTimeSyncConfig(config) {
       console.warn('IPC renderer not available')
       throw new Error('IPC renderer not available')
     }
-    return await ipcRenderer.invoke('time:update-config', config)
+    const result = await ipcRenderer.invoke('time:update-config', config)
+
+    // 配置更新后重新获取同步信息以触发变更通知
+    await getTimeSyncInfo()
+
+    return result
   } catch (error) {
     console.error('更新时间同步配置失败:', error)
     throw error
@@ -74,6 +135,13 @@ export function useTimeSync() {
   const isLoading = ref(false)
   const currentTime = ref(getSyncedTime())
   let intervalId: NodeJS.Timeout | null = null
+
+  // 时间同步变更处理函数
+  const handleTimeSyncChange = () => {
+    // 更新当前时间
+    currentTime.value = getSyncedTime()
+    console.log('时间同步发生变更，已更新当前时间:', new Date(currentTime.value).toLocaleString())
+  }
 
   // 加载同步信息
   const loadSyncInfo = async () => {
@@ -117,8 +185,6 @@ export function useTimeSync() {
       const result = await updateTimeSyncConfig(config)
       syncInfo.value = await getTimeSyncInfo()
       return result
-    } catch (error) {
-      throw error
     } finally {
       isLoading.value = false
     }
@@ -127,6 +193,14 @@ export function useTimeSync() {
   onMounted(() => {
     // 加载初始同步信息
     loadSyncInfo()
+
+    // 添加时间同步变更监听器
+    addTimeSyncChangeListener(handleTimeSyncChange)
+
+    // 监听来自主进程的时间同步变更事件
+    if (ipcRenderer) {
+      ipcRenderer.on('time:sync-changed', handleTimeSyncChange)
+    }
 
     // 设置定时器更新当前时间
     intervalId = setInterval(() => {
@@ -137,6 +211,14 @@ export function useTimeSync() {
   onUnmounted(() => {
     if (intervalId !== null) {
       clearInterval(intervalId) // 修复：确保 intervalId 不为空时才清除定时器
+    }
+
+    // 移除时间同步变更监听器
+    removeTimeSyncChangeListener(handleTimeSyncChange)
+
+    // 移除 IPC 监听器
+    if (ipcRenderer) {
+      ipcRenderer.off('time:sync-changed', handleTimeSyncChange)
     }
   })
 
